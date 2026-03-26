@@ -1,0 +1,4 @@
+backend/data/assistant_db.mv.db
+backend/data/assistant_db.trace.db
+/backend/logs
+/backend/data

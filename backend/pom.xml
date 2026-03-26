@@ -107,6 +107,12 @@
 			<groupId>dev.langchain4j</groupId>
 			<artifactId>langchain4j</artifactId>
 		</dependency>
+
+		<dependency>
+			<groupId>dev.langchain4j</groupId>
+			<artifactId>langchain4j-community-lucene</artifactId>
+			<version>${langchain4j.spring.version}</version>
+		</dependency>
 	</dependencies>
 
 	<build>

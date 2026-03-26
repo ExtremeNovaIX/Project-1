@@ -5,18 +5,38 @@ spring:
       path: /h2-console
       settings:
         web-allow-others: true
-  ai:
-    deepseek:
-      api-key: ${DEEPSEEK_API_KEY:default_value}
-      base-url: https://api.deepseek.com
 
   datasource:
-    url: jdbc:h2:mem:testdb
+    url: jdbc:h2:file:./data/assistant_db;DB_CLOSE_ON_EXIT=FALSE;AUTO_RECONNECT=TRUE
     driver-class-name: org.h2.Driver
     username: sa
     password:
 
   jpa:
-    show-sql: true
+    show-sql: false
     hibernate:
       ddl-auto: update
+
+assistant:
+  chat-model:
+    api-key: ${DEEPSEEK_API_KEY:default_value}
+    base-url: https://api.deepseek.com
+    model-name: deepseek-chat
+    timeout-seconds: 60
+    log-enabled: false
+
+  chat-memory:
+    max-messages: 20
+
+  embedding-model:
+    api-key: ${DASHSCOPE_API_KEY:default_value}
+    base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    model-name: text-embedding-v3
+
+  embedding-store:
+    path: data/vector_indices
+
+logging:
+  level:
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.jdbc.bind: WARN

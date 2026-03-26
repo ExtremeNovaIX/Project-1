@@ -16,6 +16,8 @@ public class ChatMessageEntity {
 
     private String sessionId;
 
+    private LocalDateTime time;
+
     private String role;
 
     @Column(columnDefinition = "TEXT")

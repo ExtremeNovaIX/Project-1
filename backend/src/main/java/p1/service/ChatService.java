@@ -1,65 +1,44 @@
 package p1.service;
 
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.memory.chat.ChatMemoryProvider;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.store.embedding.EmbeddingStore;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import p1.config.AssistantProperties;
 import p1.model.ChatRequestDTO;
-import p1.service.ai.Assistant;
-import p1.service.ai.skills.AssistantTools;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import p1.service.ai.frontend.FrontendAssistant;
+import p1.service.ai.frontend.memory.SummaryCacheManager;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class ChatService {
 
-    private final Assistant assistant;
-    private final ChatMemoryProvider chatMemoryProvider;
-    private final AssistantProperties assistantProperties;
-    private final AssistantTools assistantTools;
-    private static final Map<String, String> summaryCache = new ConcurrentHashMap<>();
+    private final FrontendAssistant frontendAssistant;
+    private final SummaryCacheManager summaryCacheManager;
+    private final EmbeddingStore<TextSegment> vectorStore;
+    private final EmbeddingModel embeddingModel;
 
     @Transactional
     public String sendChatToLLM(ChatRequestDTO request) {
         String sessionId = request.getSessionId();
         String userMessage = request.getMessage();
 
-        ChatMemory memory = chatMemoryProvider.get(sessionId);
-        List<ChatMessage> messages = memory.messages();
-        String currentSummary = summaryCache.getOrDefault(sessionId, "（暂无记忆摘要）");
+        String currentSummary = summaryCacheManager.getSummary(sessionId);
+        String finalMessage = """
+                【用户消息】：%s
+                【近期记忆摘要】：%s
+                【脑海中闪过的零碎回忆】：%s
+                【严格的记忆使用规则】：
+                1. 上述“回忆”仅仅是通过关键词匹配触发的，它可能与用户当前的话题毫无关系（例如同名的人/物，或者类似但不相关的场景）。
+                2. 你必须首先判断用户的真实意图。如果用户在聊新游戏、新电影或新话题，而回忆里的内容只是凑巧重名，最好不要强行把话题扯到回忆上。
+                3. 只有当用户明确表现出“怀旧、提问过去的事、或者续写之前的设定”时，你才能详细引用回忆中的细节。
+                4. 如果偶尔觉得回忆有一丁点关联，可以用一句非常简短的吐槽带过。
+                """.formatted(userMessage, currentSummary, "暂无相关场景");
 
-        int maxMessages = assistantProperties.getChatMemory().getMaxMessages();
-        if (messages.size() >= maxMessages - 6) {
-            log.info("上下文窗口已满，启动上下文压缩");
-
-//            List<ChatMessage> oldContext = messages.subList(0, 10);
-//            String incrementalSummary = assistant.summarize(oldContext);
-//            assistantTools.saveFragmentedMemory(incrementalSummary);
-//            summaryCache.put(sessionId, incrementalSummary);
-//
-//            List<ChatMessage> remaining = new ArrayList<>(messages.subList(10, messages.size()));
-//            refreshMemoryWindow(sessionId, remaining);
-//            currentSummary = incrementalSummary;
-        }
-        log.info("用户向LLM发送消息:sessionId {}, currentSummary {}, message: {}", sessionId, currentSummary, userMessage);
-        return assistant.chat(sessionId, currentSummary, userMessage);
-    }
-
-    private void refreshMemoryWindow(String sessionId, List<ChatMessage> remainingMessages) {
-        ChatMemory memory = chatMemoryProvider.get(sessionId);
-        memory.clear();
-        for (ChatMessage msg : remainingMessages) {
-            memory.add(msg);
-        }
-        log.info("上下文压缩完成，保留 {} 条最新上下文", remainingMessages.size());
+        log.info("用户向LLM发送消息:sessionId {}, message: {}", sessionId, finalMessage);
+        return frontendAssistant.chat(sessionId, finalMessage);
     }
 }

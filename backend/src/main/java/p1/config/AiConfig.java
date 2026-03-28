@@ -1,10 +1,8 @@
 package p1.config;
 
 import dev.langchain4j.community.rag.content.retriever.lucene.LuceneEmbeddingStore;
-import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
-import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
@@ -15,20 +13,26 @@ import lombok.RequiredArgsConstructor;
 import org.apache.lucene.store.FSDirectory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import p1.infrastructure.PersistentChatMemoryStore;
-import p1.service.ai.Assistant;
-import p1.service.ai.skills.AssistantTools;
+import p1.service.ai.backend.BackendAssistant;
+import p1.service.ai.frontend.FrontendAssistant;
+import p1.service.ai.frontend.memory.ArchivableChatMemory;
+import p1.service.ai.frontend.memory.ChatMessageAppender;
+import p1.service.ai.frontend.memory.MemoryCompressor;
+import p1.service.ai.skills.MemorySaveTools;
+import p1.service.ai.skills.MemorySearchTools;
 
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.time.Duration;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Configuration
 @RequiredArgsConstructor
 public class AiConfig {
 
     private final AssistantProperties props;
-    private final PersistentChatMemoryStore persistenceStore;
+    private final Map<String, ArchivableChatMemory> memoryCache = new ConcurrentHashMap<>();
 
     @Bean
     public ChatModel chatLanguageModel() {
@@ -44,21 +48,29 @@ public class AiConfig {
     }
 
     @Bean
-    public ChatMemoryProvider chatMemoryProvider() {
-        AssistantProperties.ChatMemoryConfig chatMemoryConfig = props.getChatMemory();
-        return chatId -> MessageWindowChatMemory.builder()
-                .id(chatId)
-                .maxMessages(chatMemoryConfig.getMaxMessages())
-                .chatMemoryStore(persistenceStore)
+    public ChatMemoryProvider chatMemoryProvider(MemoryCompressor compressor, ChatMessageAppender dbAppender) {
+        return memoryId -> {
+            String sessionId = memoryId.toString();
+            return memoryCache.computeIfAbsent(sessionId,
+                    id -> new ArchivableChatMemory(id, compressor, dbAppender)
+            );
+        };
+    }
+
+    @Bean
+    public FrontendAssistant frontendAssistant(ChatModel chatModel, ChatMemoryProvider chatMemoryProvider, MemorySearchTools memorySearchTools) {
+        return AiServices.builder(FrontendAssistant.class)
+                .chatModel(chatModel)
+                .chatMemoryProvider(chatMemoryProvider)
+                .tools(memorySearchTools)
                 .build();
     }
 
     @Bean
-    public Assistant assistant(ChatModel chatModel, AssistantTools assistantTools, ChatMemoryProvider chatMemoryProvider) {
-        return AiServices.builder(Assistant.class)
+    public BackendAssistant backendAssistant(ChatModel chatModel, MemorySaveTools memorySaveTools) {
+        return AiServices.builder(BackendAssistant.class)
                 .chatModel(chatModel)
-                .chatMemoryProvider(chatMemoryProvider)
-                .tools(assistantTools)
+                .tools(memorySaveTools)
                 .build();
     }
 

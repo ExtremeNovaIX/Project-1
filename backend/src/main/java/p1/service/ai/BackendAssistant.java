@@ -1,4 +1,4 @@
-package p1.service.ai.backend;
+package p1.service.ai;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.service.SystemMessage;

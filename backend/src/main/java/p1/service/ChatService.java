@@ -8,8 +8,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import p1.model.ChatRequestDTO;
-import p1.service.ai.frontend.FrontendAssistant;
-import p1.service.ai.frontend.memory.SummaryCacheManager;
+import p1.service.ai.FrontendAssistant;
+import p1.service.ai.memory.SummaryCacheManager;
 
 @Service
 @RequiredArgsConstructor
@@ -38,7 +38,9 @@ public class ChatService {
                 4. 如果偶尔觉得回忆有一丁点关联，可以用一句非常简短的吐槽带过。
                 """.formatted(userMessage, currentSummary, "暂无相关场景");
 
-        log.info("用户向LLM发送消息:sessionId {}, message: {}", sessionId, finalMessage);
-        return frontendAssistant.chat(sessionId, finalMessage);
+        log.info("用户向ID为{}的LLM发送消息: {}", sessionId, finalMessage);
+        String chat = frontendAssistant.chat(sessionId, finalMessage);
+        log.info("ID为{}的LLM回复: {}", sessionId, chat);
+        return chat;
     }
 }

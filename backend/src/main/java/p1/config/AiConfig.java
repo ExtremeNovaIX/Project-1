@@ -13,13 +13,14 @@ import lombok.RequiredArgsConstructor;
 import org.apache.lucene.store.FSDirectory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import p1.service.ai.backend.BackendAssistant;
-import p1.service.ai.frontend.FrontendAssistant;
-import p1.service.ai.frontend.memory.ArchivableChatMemory;
-import p1.service.ai.frontend.memory.ChatMessageAppender;
-import p1.service.ai.frontend.memory.MemoryCompressor;
+import p1.service.ai.BackendAssistant;
+import p1.service.ai.FrontendAssistant;
+import p1.service.ai.memory.ArchivableChatMemory;
+import p1.service.ai.memory.ChatMessageAppender;
+import p1.service.ai.memory.MemoryCompressor;
 import p1.service.ai.skills.MemorySaveTools;
 import p1.service.ai.skills.MemorySearchTools;
+import p1.service.ai.TestAssistant;
 
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -71,6 +72,13 @@ public class AiConfig {
         return AiServices.builder(BackendAssistant.class)
                 .chatModel(chatModel)
                 .tools(memorySaveTools)
+                .build();
+    }
+
+    @Bean
+    public TestAssistant testAssistant(ChatModel chatModel) {
+        return AiServices.builder(TestAssistant.class)
+                .chatModel(chatModel)
                 .build();
     }
 

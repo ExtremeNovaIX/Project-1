@@ -1,4 +1,4 @@
-package p1.service.ai.frontend.memory;
+package p1.service.ai.memory;
 
 import dev.langchain4j.data.message.ChatMessage;
 import lombok.RequiredArgsConstructor;

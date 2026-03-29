@@ -1,11 +1,11 @@
-package p1.service.ai.frontend.memory;
+package p1.service.ai.memory;
 
 import dev.langchain4j.data.message.ChatMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import p1.service.ai.backend.BackendAssistant;
+import p1.service.ai.BackendAssistant;
 
 import java.util.List;
 

@@ -9,25 +9,21 @@ import p1.service.ai.TestAssistant;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class ChatTestService {
 
-    private static final int MAX_ROUNDS = 20;
-
     private final ChatService chatService;
     private final TestAssistant testAssistant;
 
     public TestChatResponseDTO runTestChat(Integer rounds) {
-        rounds = normalizeRounds(rounds);
-        String sessionId = "test-" + UUID.randomUUID();
+        String sessionId = "test00";
         List<TestChatTurnDTO> messages = new ArrayList<>();
 
         for (int round = 1; round <= rounds; round++) {
             String transcript = buildTranscript(messages);
-            String userMessage = testAssistant.nextUserMessage(transcript, round, rounds).trim();
+            String userMessage = testAssistant.nextUserMessage(transcript).trim();
             messages.add(new TestChatTurnDTO(round, "user", userMessage));
 
             ChatRequestDTO chatRequest = new ChatRequestDTO();
@@ -40,13 +36,6 @@ public class ChatTestService {
         }
 
         return new TestChatResponseDTO(sessionId, rounds, messages);
-    }
-
-    private int normalizeRounds(int rounds) {
-        if (rounds <= 0) {
-            return 1;
-        }
-        return Math.min(rounds, MAX_ROUNDS);
     }
 
     private String buildTranscript(List<TestChatTurnDTO> messages) {

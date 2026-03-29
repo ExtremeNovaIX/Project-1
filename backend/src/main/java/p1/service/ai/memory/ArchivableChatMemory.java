@@ -20,8 +20,8 @@ public class ArchivableChatMemory implements ChatMemory {
     private final MemoryCompressor compressor;
     private final ChatMessageAppender dbAppender;
 
-    private final int triggerThreshold = 20; // 触发压缩的阈值
-    private final int compressCount = 10;    // 每次压缩抽取的条数
+    private final int triggerThreshold = 40; // 触发压缩的阈值
+    private final int compressCount = 20;    // 每次压缩抽取的条数
 
     @Override
     public Object id() {

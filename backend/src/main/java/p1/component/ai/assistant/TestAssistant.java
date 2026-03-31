@@ -1,8 +1,7 @@
-package p1.service.ai;
+package p1.component.ai.assistant;
 
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
-import dev.langchain4j.service.V;
 
 public interface TestAssistant {
 

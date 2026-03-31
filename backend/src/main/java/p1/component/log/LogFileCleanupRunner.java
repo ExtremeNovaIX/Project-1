@@ -1,4 +1,4 @@
-package p1.infrastructure;
+package p1.component.log;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;

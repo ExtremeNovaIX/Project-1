@@ -7,9 +7,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import p1.component.ai.assistant.FrontendAssistant;
+import p1.component.ai.memory.SummaryCacheManager;
 import p1.model.ChatRequestDTO;
-import p1.service.ai.FrontendAssistant;
-import p1.service.ai.memory.SummaryCacheManager;
 
 @Service
 @RequiredArgsConstructor

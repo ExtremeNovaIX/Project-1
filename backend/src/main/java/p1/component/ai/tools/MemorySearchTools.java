@@ -1,4 +1,4 @@
-package p1.service.ai.skills;
+package p1.component.ai.tools;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.data.embedding.Embedding;

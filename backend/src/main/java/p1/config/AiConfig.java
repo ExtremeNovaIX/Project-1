@@ -14,14 +14,14 @@ import org.apache.lucene.store.FSDirectory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import p1.service.ai.BackendAssistant;
-import p1.service.ai.FrontendAssistant;
-import p1.service.ai.memory.ArchivableChatMemory;
-import p1.service.ai.memory.ChatMessageAppender;
-import p1.service.ai.memory.MemoryCompressor;
-import p1.service.ai.skills.MemorySaveTools;
-import p1.service.ai.skills.MemorySearchTools;
-import p1.service.ai.TestAssistant;
+import p1.component.ai.assistant.FrontendAssistant;
+import p1.component.ai.assistant.TestAssistant;
+import p1.component.ai.memory.ArchivableChatMemory;
+import p1.component.ai.memory.ChatMessageAppender;
+import p1.component.ai.memory.MemoryCompressor;
+import p1.component.ai.service.FactExtractionAiService;
+import p1.component.ai.service.SummarizeAiService;
+import p1.component.ai.tools.MemorySearchTools;
 
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -49,25 +49,6 @@ public class AiConfig {
                 .build();
     }
 
-    @Bean
-    public ChatMemoryProvider chatMemoryProvider(MemoryCompressor compressor, ChatMessageAppender dbAppender) {
-        return memoryId -> {
-            String sessionId = memoryId.toString();
-            return memoryCache.computeIfAbsent(sessionId,
-                    id -> new ArchivableChatMemory(id, compressor, dbAppender)
-            );
-        };
-    }
-
-    @Bean
-    public FrontendAssistant frontendAssistant(@Qualifier("chatLanguageModel") ChatModel chatModel, ChatMemoryProvider chatMemoryProvider, MemorySearchTools memorySearchTools) {
-        return AiServices.builder(FrontendAssistant.class)
-                .chatModel(chatModel)
-                .chatMemoryProvider(chatMemoryProvider)
-                .tools(memorySearchTools)
-                .build();
-    }
-
     @Bean(name = "backendChatModel")
     public ChatModel backendChatModel() {
         AssistantProperties.ChatModelConfig config = props.getChatModel();
@@ -83,10 +64,11 @@ public class AiConfig {
     }
 
     @Bean
-    public BackendAssistant backendAssistant(@Qualifier("backendChatModel") ChatModel backendChatModel, MemorySaveTools memorySaveTools) {
-        return AiServices.builder(BackendAssistant.class)
-                .chatModel(backendChatModel)
-                .tools(memorySaveTools)
+    public FrontendAssistant frontendAssistant(@Qualifier("chatLanguageModel") ChatModel chatModel, ChatMemoryProvider chatMemoryProvider, MemorySearchTools memorySearchTools) {
+        return AiServices.builder(FrontendAssistant.class)
+                .chatModel(chatModel)
+                .chatMemoryProvider(chatMemoryProvider)
+                .tools(memorySearchTools)
                 .build();
     }
 
@@ -95,6 +77,30 @@ public class AiConfig {
         return AiServices.builder(TestAssistant.class)
                 .chatModel(chatModel)
                 .build();
+    }
+
+    @Bean
+    public SummarizeAiService summarizeAiService(@Qualifier("backendChatModel") ChatModel backendChatModel) {
+        return AiServices.builder(SummarizeAiService.class)
+                .chatModel(backendChatModel)
+                .build();
+    }
+
+    @Bean
+    public FactExtractionAiService factExtractionAiService(@Qualifier("backendChatModel") ChatModel backendChatModel) {
+        return AiServices.builder(FactExtractionAiService.class)
+                .chatModel(backendChatModel)
+                .build();
+    }
+
+    @Bean
+    public ChatMemoryProvider chatMemoryProvider(MemoryCompressor compressor, ChatMessageAppender dbAppender) {
+        return memoryId -> {
+            String sessionId = memoryId.toString();
+            return memoryCache.computeIfAbsent(sessionId,
+                    id -> new ArchivableChatMemory(id, compressor, dbAppender, props)
+            );
+        };
     }
 
     @Bean

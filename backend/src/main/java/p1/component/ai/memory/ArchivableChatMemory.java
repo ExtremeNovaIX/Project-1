@@ -1,9 +1,9 @@
-package p1.service.ai.memory;
+package p1.component.ai.memory;
 
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.memory.ChatMemory;
-import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import p1.config.AssistantProperties;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -12,19 +12,28 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-@AllArgsConstructor
 @Slf4j
 public class ArchivableChatMemory implements ChatMemory {
 
     private final String sessionId;
     private final List<ChatMessage> messages = new CopyOnWriteArrayList<>();
     private final AtomicBoolean isCompressing = new AtomicBoolean(false);
+
     private final MemoryCompressor compressor;
     private final ChatMessageAppender dbAppender;
 
-    private final int triggerThreshold = 30; // 触发压缩的阈值
-    private final int compressCount = 20;    // 每次压缩抽取的条数
+    private final int triggerThreshold; // 触发压缩的阈值
+    private final int compressCount;    // 每次压缩抽取的条数
     private final Set<String> referenceBuffer = ConcurrentHashMap.newKeySet();
+
+    public ArchivableChatMemory(String sessionId, MemoryCompressor compressor,
+                                ChatMessageAppender dbAppender, AssistantProperties assistantProperties) {
+        this.sessionId = sessionId;
+        this.compressor = compressor;
+        this.dbAppender = dbAppender;
+        this.triggerThreshold = assistantProperties.getChatMemory().getTriggerThreshold();
+        this.compressCount = assistantProperties.getChatMemory().getCompressCount();
+    }
 
     @Override
     public Object id() {
@@ -82,6 +91,7 @@ public class ArchivableChatMemory implements ChatMemory {
                 break;
             }
         }
+        log.info("ID为{}的LLM记忆窗口清理完成，当前记忆条数为 {} 条", sessionId, messages.size());
     }
 
     @Override

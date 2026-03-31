@@ -2,10 +2,10 @@ package p1.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import p1.component.ai.assistant.TestAssistant;
 import p1.model.ChatRequestDTO;
 import p1.model.TestChatResponseDTO;
 import p1.model.TestChatTurnDTO;
-import p1.service.ai.TestAssistant;
 
 import java.util.ArrayList;
 import java.util.List;

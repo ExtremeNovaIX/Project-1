@@ -1,4 +1,4 @@
-package p1.service.ai;
+package p1.component.ai.assistant;
 
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;

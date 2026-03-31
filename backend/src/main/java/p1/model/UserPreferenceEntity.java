@@ -2,10 +2,12 @@ package p1.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "user_preference")
 @Data
+@NoArgsConstructor
 public class UserPreferenceEntity {
 
     @Id

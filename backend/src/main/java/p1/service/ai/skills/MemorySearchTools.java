@@ -4,6 +4,7 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
@@ -74,10 +75,15 @@ public class MemorySearchTools {
             return "LLM调用 searchLongTermMemory 结果：未找到与“" + query + "”相关的长期记忆。";
         }
 
-        String memoryText = searchResult.matches().stream()
-                .map(match -> match.embedded().text())
-                .collect(Collectors.joining("；"));
+        StringBuilder resultBuilder = new StringBuilder();
+        for (EmbeddingMatch<TextSegment> match : searchResult.matches()) {
+            TextSegment segment = match.embedded();
+            String dbId = segment.metadata().getString("db_id");
 
+            resultBuilder.append("[记忆ID: ").append(dbId).append("] ")
+                    .append(segment.text()).append("\n");
+        }
+        String memoryText = resultBuilder.toString();
         log.info("LLM调用 searchLongTermMemory 成功，命中数量：{}，结果摘要：{}",
                 searchResult.matches().size(), memoryText);
         return "LLM调用 searchLongTermMemory 结果：查询成功。检索到的相关长期记忆如下：" + memoryText;

@@ -5,24 +5,23 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "memory_archives")
 @Data
-public class MemoryArchiveEntity {
-
+@Entity
+@Table(name = "memory_patches")
+public class MemoryPatchEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(length = 50)
-    private String category;
+    // 关联主记忆的ID
+    @Column(nullable = false)
+    private Long targetMemoryId;
 
-    @Column(columnDefinition = "TEXT")
-    private String keywordSummary;
+    // 补丁内容
+    @Column(columnDefinition = "TEXT", nullable = false)
+    private String correctionContent;
 
-    @Column(columnDefinition = "TEXT")
-    private String detailedSummary;
-
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

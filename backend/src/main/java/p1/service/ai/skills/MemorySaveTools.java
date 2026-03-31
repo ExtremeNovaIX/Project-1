@@ -2,17 +2,25 @@ package p1.service.ai.skills;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.structured.Description;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import p1.model.MemoryArchiveEntity;
+import p1.model.MemoryPatchEntity;
 import p1.model.UserPreferenceEntity;
 import p1.repo.MemoryArchiveRepository;
+import p1.repo.MemoryPatchRepository;
 import p1.repo.UserPreferenceRepository;
+
+import java.util.List;
 
 @Component
 @AllArgsConstructor
@@ -23,48 +31,56 @@ public class MemorySaveTools {
     private final EmbeddingStore<TextSegment> vectorStore;
     private final EmbeddingModel embeddingModel;
     private final MemoryArchiveRepository archiveRepo;
+    private final MemoryPatchRepository patchRepo;
 
-    @Tool("""
-            当用户讲述了一个完整的故事、长篇经历、重要设定或复杂事件时调用此工具。
-            你必须对内容进行“双轨压缩”，都以第三人称客观叙述。
-            """)
-    public String compressMemory(
-            @P("分类标签，例如 [虚构故事]、[现实生活]、[游戏探讨]。") String category,
-            @P("极度压缩的一句话事情梗概，后续将会用于向量检索。") String keywordSummary,
-            @P("不丢失重要信息的压缩总结，保留核心细节和起承转合并且去掉无用的信息") String detailedSummary) {
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class MemoryEvent {
+        @Description("事件的主题/标签，例如：'科幻故事' 或 '吐槽智能家居'")
+        public String topic;
 
-        log.info("LLM开始调用 compressMemory 进行记忆压缩。分类标签:{}, 记忆梗概:{}", category, keywordSummary);
+        @Description("单一事件的富文本微型日记，包含起因经过结果和情绪")
+        public String narrative;
 
-        try {
-            // 存入H2数据库，获取ID
-            MemoryArchiveEntity entity = new MemoryArchiveEntity();
-            entity.setCategory(category);
-            entity.setKeywordSummary(keywordSummary);
-            entity.setDetailedSummary(detailedSummary);
-            entity = archiveRepo.save(entity);
+        @Description("重要性打分 (1-10)，5 分以上的事件才会被归档")
+        public int importanceScore;
 
-            // 将标签和ID存入Lucene元数据，建立DB和Lucene的关联关系
-            Metadata metadata = new Metadata();
-            metadata.put("db_id", entity.getId().toString());
-            metadata.put("category", category);
-            TextSegment segment = TextSegment.from(keywordSummary, metadata);
-            vectorStore.add(embeddingModel.embed(segment).content(), segment);
+        @Description("如果是对旧记忆的纠错，填旧记忆的ID；如果是新事件，填 null")
+        public Long targetPatchId;
+    }
 
-            log.info("LLM调用 compressMemory 成功。Lucene-DB关系已建立，DB主键: {}", entity.getId());
-            return "复杂记忆归档成功。";
-        } catch (Exception e) {
-            log.error("LLM调用 compressMemory 失败，记忆压缩失败", e);
-            return "归档失败，内部存储异常。";
+    @Tool("分析对话，提炼出前台短期聊天的摘要，并将有长期价值的内容拆分为一个或多个独立事件入库")
+    public String processAndArchiveMemory(
+            @P("【长时记忆事件库】：从对话中拆分出的独立事件列表。如果整段对话都在聊一件事，列表里就只有一个对象；如果聊了两个毫不相干的话题，请拆分成两个独立的对象。")
+            List<MemoryEvent> extractedEvents
+    ) {
+        log.info("LLM开始调用 processAndArchiveMemory ，参数：{}", extractedEvents);
+        int patchCount = 0;
+        int newCount = 0;
+
+        for (MemoryEvent event : extractedEvents) {
+            if (event.importanceScore >= 5) {
+                if (event.targetPatchId != null) {
+                    patchMemory(event.targetPatchId, event.narrative);
+                    patchCount++;
+                } else {
+                    saveNewMemory(event.topic, event.narrative);
+                    newCount++;
+                }
+            }
         }
+        log.info("LLM调用 processAndArchiveMemory 成功。共处理 {} 条事件，其中 {} 条是补丁，{} 条是新事件。",
+                extractedEvents.size(), patchCount, newCount);
+        return "processAndArchiveMemory 结果：保存成功。已写入数据库。";
     }
 
     @Tool("""
             当用户提到确定的个人事实，如名字、生日、明确的固定喜好、家庭信息时优先使用。
             """)
-    public String saveLongTermMemory(@P("事实的类别或别名，如：生日、忌口、梦想") String aliases,
+    public String saveCoreFactMemory(@P("事实的类别或别名，如：生日、忌口、梦想") String aliases,
                                      @P("具体的内容值") String configValue,
                                      @P("对事实的简洁描述") String description) {
-        log.info("LLM开始调用 saveLongTermMemory ，aliases：{}，configValue：{}，description：{}",
+        log.info("LLM开始调用 saveCoreFactMemory ，aliases：{}，configValue：{}，description：{}",
                 aliases, configValue, description);
         try {
             UserPreferenceEntity entity = new UserPreferenceEntity();
@@ -72,28 +88,54 @@ public class MemorySaveTools {
             entity.setConfigValue(configValue);
             entity.setDescription(description);
             userRepo.save(entity);
-            log.info("LLM调用 saveLongTermMemory 成功。aliases: {} 写入长期记忆，configValue: {}，description: {}。",
+            log.info("LLM调用 saveCoreFactMemory 成功。aliases: {} 写入核心记忆，configValue: {}，description: {}。",
                     aliases, configValue, description);
-            return "saveLongTermMemory 结果：保存成功。已写入长期记忆，aliases:["
+            return "saveCoreFactMemory 结果：保存成功。已写入核心记忆，aliases:["
                     + aliases + "]，configValue:[" + configValue + "]，description:[" + description + "]。";
         } catch (Exception e) {
-            log.error("LLM调用 saveLongTermMemory 失败，参数aliases：{}，configValue：{}，description：{}",
+            log.error("LLM调用 saveCoreFactMemory 失败，参数aliases：{}，configValue：{}，description：{}",
                     aliases, configValue, description, e);
-            return "saveLongTermMemory 结果：保存失败，长期记忆未能写入。";
+            return "saveCoreFactMemory 结果：保存失败，核心记忆未能写入。";
         }
     }
 
-    @Tool("""
-            记录用户重要的感性记忆或长篇故事。
-            当信息比较零碎、带有情绪色彩或属于阶段性总结时使用。
-            """)
-    public String saveFragmentedMemory(@P("压缩后的记忆片段，建议包含人物、事件和情感。") String content) {
-        log.info("LLM开始调用 saveFragmentedMemory ，内容：{}", content);
+    public void saveNewMemory(String category, String narrative) {
+        log.info("尝试保存新记忆：类别:{}，摘要:{}，时间:{}", category, narrative, System.currentTimeMillis());
+        try {
+            MemoryArchiveEntity archive = new MemoryArchiveEntity();
+            archive.setCategory(category);
+            archive.setDetailedSummary(narrative);
+            archive = archiveRepo.save(archive);
 
-        TextSegment segment = TextSegment.from(content);
-        vectorStore.add(embeddingModel.embed(segment).content(), segment);
+            String contentToIndex = category + " " + narrative;
+            Metadata metadata = new Metadata();
+            metadata.put("db_id", String.valueOf(archive.getId()));
 
-        log.info("LLM调用 saveFragmentedMemory 成功。记忆片段 {} 已写入向量记忆库。", content);
-        return "saveFragmentedMemory 结果：保存成功。该记忆片段已写入向量记忆库。";
+            TextSegment segment = TextSegment.from(contentToIndex, metadata);
+            Response<Embedding> embeddingResponse = embeddingModel.embed(segment);
+            vectorStore.add(embeddingResponse.content(), segment);
+            log.info("类别: {}, 摘要: {} 记忆已成功写入数据库，主键ID: {}", category, narrative, archive.getId());
+        } catch (Exception e) {
+            log.error("保存类别: {}, 摘要: {} 时失败", category, narrative, e);
+        }
+    }
+
+    public void patchMemory(Long targetId, String correction) {
+        log.info("尝试给ID为 {} 的旧记忆打上修正补丁：{}", targetId, correction);
+        try {
+            if (!archiveRepo.existsById(targetId)) {
+                log.warn("向目标ID {} 追加补丁失败，目标记忆ID不存在。", targetId);
+                return;
+            }
+
+            MemoryPatchEntity patch = new MemoryPatchEntity();
+            patch.setTargetMemoryId(targetId);
+            patch.setCorrectionContent(correction);
+            patchRepo.save(patch);
+
+            log.info("向目标ID {} 追加补丁成功", targetId);
+        } catch (Exception e) {
+            log.error("追加补丁失败", e);
+        }
     }
 }

@@ -18,11 +18,11 @@ public class MemoryCompressor {
     private final SummaryCacheManager summaryCacheManager;
 
     @Async
-    public void compressAsync(String sessionId, List<ChatMessage> toCompress, Runnable onSuccess) {
+    public void compressAsync(String sessionId, List<ChatMessage> toCompress, List<String> references, Runnable onSuccess) {
         log.info("ID为{}的LLM: 开始异步压缩 {} 条近期记忆...", sessionId, toCompress.size());
 
         try {
-            String newIncrementalSummary = backendAssistant.summarize(toCompress);
+            String newIncrementalSummary = backendAssistant.summarize(toCompress, references);
             summaryCacheManager.updateSummary(sessionId, newIncrementalSummary);
             if (onSuccess != null) {
                 onSuccess.run();

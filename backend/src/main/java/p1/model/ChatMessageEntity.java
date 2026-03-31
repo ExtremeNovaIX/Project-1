@@ -29,11 +29,17 @@ public class ChatMessageEntity {
     @Column(columnDefinition = "TEXT")
     private String content;
 
-    private LocalDateTime createdAt = LocalDateTime.now();
+    @Column(nullable = false)
+    private LocalDateTime createdAt;
 
     // 状态枚举：ACTIVE(活跃), COMPRESSING(压缩中), ARCHIVED(已归档)
     @Column(length = 20)
     private String status = STATUS_ACTIVE;
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+    }
 
     public ChatMessageEntity(ChatMessage message, String sessionId) {
         this.setSessionId(sessionId);

@@ -11,6 +11,7 @@ import dev.langchain4j.service.AiServices;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import lombok.RequiredArgsConstructor;
 import org.apache.lucene.store.FSDirectory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import p1.service.ai.BackendAssistant;
@@ -59,7 +60,7 @@ public class AiConfig {
     }
 
     @Bean
-    public FrontendAssistant frontendAssistant(ChatModel chatModel, ChatMemoryProvider chatMemoryProvider, MemorySearchTools memorySearchTools) {
+    public FrontendAssistant frontendAssistant(@Qualifier("chatLanguageModel") ChatModel chatModel, ChatMemoryProvider chatMemoryProvider, MemorySearchTools memorySearchTools) {
         return AiServices.builder(FrontendAssistant.class)
                 .chatModel(chatModel)
                 .chatMemoryProvider(chatMemoryProvider)
@@ -67,16 +68,30 @@ public class AiConfig {
                 .build();
     }
 
+    @Bean(name = "backendChatModel")
+    public ChatModel backendChatModel() {
+        AssistantProperties.ChatModelConfig config = props.getChatModel();
+        return OpenAiChatModel.builder()
+                .apiKey(config.getApiKey())
+                .baseUrl(config.getBaseUrl())
+                .modelName(config.getModelName())
+                .timeout(Duration.ofSeconds(config.getTimeoutSeconds()))
+                .logRequests(config.isLogEnabled())
+                .logResponses(config.isLogEnabled())
+                .temperature(0.0)
+                .build();
+    }
+
     @Bean
-    public BackendAssistant backendAssistant(ChatModel chatModel, MemorySaveTools memorySaveTools) {
+    public BackendAssistant backendAssistant(@Qualifier("backendChatModel") ChatModel backendChatModel, MemorySaveTools memorySaveTools) {
         return AiServices.builder(BackendAssistant.class)
-                .chatModel(chatModel)
+                .chatModel(backendChatModel)
                 .tools(memorySaveTools)
                 .build();
     }
 
     @Bean
-    public TestAssistant testAssistant(ChatModel chatModel) {
+    public TestAssistant testAssistant(@Qualifier("chatLanguageModel") ChatModel chatModel) {
         return AiServices.builder(TestAssistant.class)
                 .chatModel(chatModel)
                 .build();

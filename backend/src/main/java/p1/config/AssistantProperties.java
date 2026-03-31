@@ -21,11 +21,14 @@ public class AssistantProperties {
         private Long timeoutSeconds;
         private boolean logEnabled;
         private String prompt;
+        private int contextMaxSummaryCount;
     }
 
     @Data
     public static class ChatMemoryConfig {
         private Integer maxMessages;
+        private Integer compressCount;
+        private Integer triggerThreshold;
     }
 
     @Data

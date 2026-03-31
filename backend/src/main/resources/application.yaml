@@ -26,7 +26,10 @@ assistant:
     log-enabled: false
 
   chat-memory:
-    max-messages: 20
+    max-messages: 80
+    trigger-threshold: 30
+    compress-count: 20
+    context-max-summary-count: 3
 
   embedding-model:
     api-key: ${DASHSCOPE_API_KEY:default_value}

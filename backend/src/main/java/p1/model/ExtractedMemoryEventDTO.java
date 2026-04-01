@@ -1,10 +1,8 @@
 package p1.model;
 
 import dev.langchain4j.model.output.structured.Description;
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.RequiredArgsConstructor;
 
 @Data
 @NoArgsConstructor

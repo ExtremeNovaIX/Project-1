@@ -2,7 +2,7 @@ package p1.component.ai.memory;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import p1.config.AssistantProperties;
+import p1.config.prop.AssistantProperties;
 
 import java.time.LocalDateTime;
 import java.util.LinkedList;
@@ -31,7 +31,7 @@ public class SummaryCacheManager {
     public void updateSummary(String sessionId, String newSummary) {
         summaryCache.computeIfAbsent(sessionId, k -> new LinkedList<>());
         LinkedList<String> queue = summaryCache.get(sessionId);
-        if (queue.size() >= props.getChatMemory().getMaxMessages()) {
+        if (queue.size() >= props.getChatMemory().getContextMaxSummaryCount()) {
             queue.removeFirst();
         }
         LocalDateTime now = LocalDateTime.now();

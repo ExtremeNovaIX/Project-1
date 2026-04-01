@@ -29,7 +29,9 @@ assistant:
     max-messages: 80
     trigger-threshold: 30
     compress-count: 20
-    context-max-summary-count: 3
+    duplication-threshold: 0.95
+    related-threshold: 0.75
+    context-max-summary-count: 30
 
   embedding-model:
     api-key: ${DASHSCOPE_API_KEY:default_value}

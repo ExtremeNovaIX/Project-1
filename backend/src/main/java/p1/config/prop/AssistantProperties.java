@@ -1,4 +1,4 @@
-package p1.config;
+package p1.config.prop;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -21,7 +21,6 @@ public class AssistantProperties {
         private Long timeoutSeconds;
         private boolean logEnabled;
         private String prompt;
-        private int contextMaxSummaryCount;
     }
 
     @Data
@@ -29,6 +28,9 @@ public class AssistantProperties {
         private Integer maxMessages;
         private Integer compressCount;
         private Integer triggerThreshold;
+        private int contextMaxSummaryCount;
+        private double duplicationThreshold;// 去重线 (与旧记忆相似度高于此值直接丢弃)
+        private double relatedThreshold;// 关联线 (与旧记忆相似度介于此值与去重线之间，触发LLM审核)
     }
 
     @Data

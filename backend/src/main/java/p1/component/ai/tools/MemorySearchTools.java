@@ -1,18 +1,15 @@
 package p1.component.ai.tools;
 
 import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
-import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
-import dev.langchain4j.store.embedding.EmbeddingStore;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import p1.model.UserPreferenceEntity;
 import p1.repo.UserPreferenceRepository;
+import p1.service.EmbeddingService;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -23,8 +20,7 @@ import java.util.stream.Collectors;
 public class MemorySearchTools {
 
     private final UserPreferenceRepository userRepo;
-    private final EmbeddingStore<TextSegment> vectorStore;
-    private final EmbeddingModel embeddingModel;
+    private final EmbeddingService embeddingService;
 
     @Tool("""
             在数据库中查询用户的核心档案信息，例如姓名、生日、基础喜好，如果查不到则会在内部调用向量检索方法。
@@ -61,15 +57,8 @@ public class MemorySearchTools {
             """)
     public String searchLongTermMemory(String query) {
         log.info("LLM开始调用 searchLongTermMemory ，查询词：{}", query);
+        EmbeddingSearchResult<TextSegment> searchResult = embeddingService.searchEmbedding(query, 3, 0.6);
 
-        Embedding queryEmbedding = embeddingModel.embed(query).content();
-        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
-                .queryEmbedding(queryEmbedding)
-                .maxResults(3)
-                .minScore(0.6)
-                .build();
-
-        EmbeddingSearchResult<TextSegment> searchResult = vectorStore.search(searchRequest);
         if (searchResult.matches().isEmpty()) {
             log.info("LLM调用 searchLongTermMemory 完成，结果为未命中");
             return "LLM调用 searchLongTermMemory 结果：未找到与“" + query + "”相关的长期记忆。";

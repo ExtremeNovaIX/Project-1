@@ -20,8 +20,10 @@ import p1.component.ai.memory.ArchivableChatMemory;
 import p1.component.ai.memory.ChatMessageAppender;
 import p1.component.ai.memory.MemoryCompressor;
 import p1.component.ai.service.FactExtractionAiService;
+import p1.component.ai.service.MemoryLogicJudgeAiService;
 import p1.component.ai.service.SummarizeAiService;
 import p1.component.ai.tools.MemorySearchTools;
+import p1.config.prop.AssistantProperties;
 
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -89,6 +91,13 @@ public class AiConfig {
     @Bean
     public FactExtractionAiService factExtractionAiService(@Qualifier("backendChatModel") ChatModel backendChatModel) {
         return AiServices.builder(FactExtractionAiService.class)
+                .chatModel(backendChatModel)
+                .build();
+    }
+
+    @Bean
+    public MemoryLogicJudgeAiService memoryLogicJudgeAiService(@Qualifier("backendChatModel") ChatModel backendChatModel) {
+        return AiServices.builder(MemoryLogicJudgeAiService.class)
                 .chatModel(backendChatModel)
                 .build();
     }

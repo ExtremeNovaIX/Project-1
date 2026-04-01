@@ -3,7 +3,7 @@ package p1.component.ai.memory;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.memory.ChatMemory;
 import lombok.extern.slf4j.Slf4j;
-import p1.config.AssistantProperties;
+import p1.config.prop.AssistantProperties;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -1,8 +1,10 @@
 package p1.service;
 
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
@@ -33,5 +35,11 @@ public class EmbeddingService {
                 .build();
 
         return vectorStore.search(searchRequest);
+    }
+
+    public void saveEmbedding(String text, Metadata metadata) {
+        TextSegment segment = TextSegment.from(text, metadata);
+        Response<Embedding> embeddingResponse = embeddingModel.embed(segment);
+        vectorStore.add(embeddingResponse.content(), segment);
     }
 }

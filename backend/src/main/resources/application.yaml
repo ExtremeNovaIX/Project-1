@@ -27,10 +27,10 @@ assistant:
 
   chat-memory:
     max-messages: 80
-    trigger-threshold: 30
-    compress-count: 20
+    trigger-threshold: 6
+    compress-count: 6
     duplication-threshold: 0.95
-    related-threshold: 0.75
+    related-threshold: 0.70
     context-max-summary-count: 30
 
   embedding-model:

@@ -9,7 +9,7 @@ import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import lombok.RequiredArgsConstructor;
+import lombok.AllArgsConstructor;
 import org.apache.lucene.store.FSDirectory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
@@ -23,20 +23,23 @@ import p1.component.ai.service.FactExtractionAiService;
 import p1.component.ai.service.MemoryLogicJudgeAiService;
 import p1.component.ai.service.SummarizeAiService;
 import p1.component.ai.tools.MemorySearchTools;
+import p1.component.log.AiServiceLoggingListener;
 import p1.config.prop.AssistantProperties;
 
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.time.Duration;
+import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Configuration
-@RequiredArgsConstructor
+@AllArgsConstructor
 public class AiConfig {
 
     private final AssistantProperties props;
     private final Map<String, ArchivableChatMemory> memoryCache = new ConcurrentHashMap<>();
+    private final AiServiceLoggingListener listener;
 
     @Bean
     public ChatModel chatLanguageModel() {
@@ -48,6 +51,7 @@ public class AiConfig {
                 .timeout(Duration.ofSeconds(chatModelConfig.getTimeoutSeconds()))
                 .logRequests(chatModelConfig.isLogEnabled())
                 .logResponses(chatModelConfig.isLogEnabled())
+                .listeners(Collections.singletonList(listener))
                 .build();
     }
 
@@ -61,6 +65,7 @@ public class AiConfig {
                 .timeout(Duration.ofSeconds(config.getTimeoutSeconds()))
                 .logRequests(config.isLogEnabled())
                 .logResponses(config.isLogEnabled())
+                .listeners(Collections.singletonList(listener))
                 .temperature(0.0)
                 .build();
     }

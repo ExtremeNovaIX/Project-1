@@ -15,13 +15,13 @@ public class ChatMessageAppender {
 
     private final ChatMessageRepository repository;
 
-    @Async
+    @Async("asyncTaskExecutor")
     public void appendAsync(String sessionId, ChatMessage message) {
         try {
             ChatMessageEntity entity = new ChatMessageEntity(message, sessionId);
             repository.save(entity);
         } catch (Exception e) {
-            log.error("ID为{}的LLM:记忆保存失败", sessionId, e);
+            log.error("记忆保存失败", e);
         }
     }
 }

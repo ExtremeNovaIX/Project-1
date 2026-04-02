@@ -4,7 +4,6 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 import p1.config.prop.AssistantProperties;
 import p1.model.ExtractedMemoryEventDTO;
@@ -25,8 +24,8 @@ public class MemorySimilarityRouter {
         double THRESHOLD_DUPLICATE = props.getChatMemory().getDuplicationThreshold(); // 去重线 (高于此值直接丢弃)
         double THRESHOLD_RELATED = props.getChatMemory().getRelatedThreshold();   // 关联线 (介于此值与去重线之间，触发LLM审核)
 
-        // 在向量库中寻找最相似的 3 条旧记忆
-        List<EmbeddingMatch<TextSegment>> matches = embeddingService.searchEmbedding(newEvent.getNarrative(), 3, THRESHOLD_RELATED).matches();
+        // 在向量库中寻找最相似的 1 条旧记忆
+        List<EmbeddingMatch<TextSegment>> matches = embeddingService.searchEmbedding(newEvent.getNarrative(), 1, THRESHOLD_RELATED).matches();
 
         if (matches == null || matches.isEmpty()) {
             return new RoutingResult(MemoryRouteAction.INSERT_NEW, null);

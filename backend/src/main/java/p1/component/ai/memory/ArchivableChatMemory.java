@@ -59,15 +59,15 @@ public class ArchivableChatMemory implements ChatMemory {
 
         messages.add(message);
         dbAppender.appendAsync(sessionId, message);
-        log.info("ID为{}的LLM记忆窗口新增一条消息，当前记忆条数为 {} 条", sessionId, messages.size());
+        log.info("记忆窗口新增一条消息，当前记忆条数为 {} 条", messages.size());
 
         if (isFinalTurnMessage && messages.size() >= triggerThreshold && isCompressing.compareAndSet(false, true)) {
-            log.info("ID为{}的LLM记忆触达压缩水位线 {}，触发记忆压缩...", sessionId, triggerThreshold);
+            log.info("记忆触达压缩水位线 {}，触发记忆压缩...", triggerThreshold);
             List<ChatMessage> toCompress = new ArrayList<>(messages.subList(0, compressCount));
             List<String> references = new ArrayList<>(referenceBuffer);
 
             compressor.compressAsync(sessionId, toCompress, references, () -> {
-                log.info("ID为{}的LLM记忆后台压缩完成，当前记忆条数为 {} 条", sessionId, messages.size());
+                log.info("记忆后台压缩完成，当前记忆条数为 {} 条", messages.size());
                 messages.removeAll(toCompress);
                 referenceBuffer.clear();
                 isCompressing.set(false);
@@ -91,7 +91,7 @@ public class ArchivableChatMemory implements ChatMemory {
                 break;
             }
         }
-        log.info("ID为{}的LLM记忆窗口清理完成，当前记忆条数为 {} 条", sessionId, messages.size());
+        log.info("记忆窗口清理完成，当前记忆条数为 {} 条", messages.size());
     }
 
     @Override

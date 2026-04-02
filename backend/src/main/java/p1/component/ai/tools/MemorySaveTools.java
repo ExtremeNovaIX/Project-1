@@ -3,12 +3,7 @@ package p1.component.ai.tools;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.structured.Description;
-import dev.langchain4j.store.embedding.EmbeddingStore;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +14,7 @@ import p1.model.UserPreferenceEntity;
 import p1.repo.MemoryArchiveRepository;
 import p1.repo.MemoryPatchRepository;
 import p1.repo.UserPreferenceRepository;
+import p1.service.EmbeddingService;
 
 import java.util.List;
 
@@ -28,10 +24,9 @@ import java.util.List;
 public class MemorySaveTools {
 
     private final UserPreferenceRepository userRepo;
-    private final EmbeddingStore<TextSegment> vectorStore;
-    private final EmbeddingModel embeddingModel;
     private final MemoryArchiveRepository archiveRepo;
     private final MemoryPatchRepository patchRepo;
+    private final EmbeddingService embeddingService;
 
     @AllArgsConstructor
     @NoArgsConstructor
@@ -111,9 +106,7 @@ public class MemorySaveTools {
             Metadata metadata = new Metadata();
             metadata.put("db_id", String.valueOf(archive.getId()));
 
-            TextSegment segment = TextSegment.from(contentToIndex, metadata);
-            Response<Embedding> embeddingResponse = embeddingModel.embed(segment);
-            vectorStore.add(embeddingResponse.content(), segment);
+            embeddingService.saveEmbedding(contentToIndex, metadata);
             log.info("类别: {}, 摘要: {} 记忆已成功写入数据库，主键ID: {}", category, narrative, archive.getId());
         } catch (Exception e) {
             log.error("保存类别: {}, 摘要: {} 时失败", category, narrative, e);

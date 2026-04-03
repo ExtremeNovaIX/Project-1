@@ -31,7 +31,7 @@ public class ArchivableChatMemory implements ChatMemory {
         this.sessionId = sessionId;
         this.compressor = compressor;
         this.dbAppender = dbAppender;
-        this.triggerThreshold = assistantProperties.getChatMemory().getTriggerThreshold();
+        this.triggerThreshold = assistantProperties.getChatMemory().getTriggerCompressThreshold();
         this.compressCount = assistantProperties.getChatMemory().getCompressCount();
     }
 
@@ -59,7 +59,6 @@ public class ArchivableChatMemory implements ChatMemory {
 
         messages.add(message);
         dbAppender.appendAsync(sessionId, message);
-        log.info("记忆窗口新增一条消息，当前记忆条数为 {} 条", messages.size());
 
         if (isFinalTurnMessage && messages.size() >= triggerThreshold && isCompressing.compareAndSet(false, true)) {
             log.info("记忆触达压缩水位线 {}，触发记忆压缩...", triggerThreshold);
@@ -67,10 +66,14 @@ public class ArchivableChatMemory implements ChatMemory {
             List<String> references = new ArrayList<>(referenceBuffer);
 
             compressor.compressAsync(sessionId, toCompress, references, () -> {
-                log.info("记忆后台压缩完成，当前记忆条数为 {} 条", messages.size());
-                messages.removeAll(toCompress);
+                for (int i = 0; i < toCompress.size(); i++) {
+                    if (!messages.isEmpty()) {
+                        messages.removeFirst();
+                    }
+                }
                 referenceBuffer.clear();
                 isCompressing.set(false);
+                log.info("记忆后台压缩完成，当前记忆条数为 {} 条", messages.size());
             });
         }
     }

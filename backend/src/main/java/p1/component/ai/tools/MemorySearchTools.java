@@ -57,7 +57,7 @@ public class MemorySearchTools {
             """)
     public String searchLongTermMemory(String query) {
         log.info("LLM开始调用 searchLongTermMemory ，查询词：{}", query);
-        EmbeddingSearchResult<TextSegment> searchResult = embeddingService.searchEmbedding(query, 3, 0.6);
+        EmbeddingSearchResult<TextSegment> searchResult = embeddingService.searchEmbedding(query, 3, 0.5);
 
         if (searchResult.matches().isEmpty()) {
             log.info("LLM调用 searchLongTermMemory 完成，结果为未命中");

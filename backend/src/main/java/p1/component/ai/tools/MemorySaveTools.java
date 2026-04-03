@@ -95,7 +95,7 @@ public class MemorySaveTools {
     }
 
     public void saveNewMemory(String category, String narrative) {
-        log.info("尝试保存新记忆：类别:{}，摘要:{}，时间:{}", category, narrative, System.currentTimeMillis());
+        log.info("尝试保存新记忆：类别:{}，摘要:{}", category, narrative);
         try {
             MemoryArchiveEntity archive = new MemoryArchiveEntity();
             archive.setCategory(category);
@@ -107,9 +107,9 @@ public class MemorySaveTools {
             metadata.put("db_id", String.valueOf(archive.getId()));
 
             embeddingService.saveEmbedding(contentToIndex, metadata);
-            log.info("类别: {}, 摘要: {} 记忆已成功写入数据库，主键ID: {}", category, narrative, archive.getId());
+            log.info("记忆已成功写入数据库，主键ID: {}，类别: {}, 摘要: {}", archive.getId(), category, narrative);
         } catch (Exception e) {
-            log.error("保存类别: {}, 摘要: {} 时失败", category, narrative, e);
+            log.error("保存新记忆时失败。类别: {}, 摘要: {}", category, narrative, e);
         }
     }
 

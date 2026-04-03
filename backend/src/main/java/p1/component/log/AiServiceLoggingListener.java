@@ -1,44 +1,71 @@
 package p1.component.log;
 
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
+import org.springframework.boot.ansi.AnsiColor;
+import org.springframework.boot.ansi.AnsiOutput;
+import org.springframework.boot.ansi.AnsiStyle;
 import org.springframework.stereotype.Component;
+import p1.mdc.ChatSessionMetrics;
+import p1.utils.ChatMessageUtil;
 import p1.utils.LogUtil;
 
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class AiServiceLoggingListener implements ChatModelListener {
+
+    private final ChatSessionMetrics chatSessionMetrics;
 
     @Override
     public void onResponse(ChatModelResponseContext context) {
         ChatResponse response = context.chatResponse();
-        ChatRequest request = context.chatRequest();
-
-        String aiOutput = response.aiMessage().text() == null ? "N/A" : response.aiMessage().text();
         TokenUsage usage = response.tokenUsage();
+        ChatRequest request = context.chatRequest();
+        String inputStr = ChatMessageUtil.formatMessageList(request.messages());
 
-        String input = "N/A";
-        if (!request.messages().isEmpty()) {
-            ChatMessage lastMsg = request.messages().getLast();
-            if (lastMsg instanceof UserMessage userMsg) {
-                input = userMsg.singleText();
-            }
-        }
-        log.info("LLM交互完成");
-        log.info("Input: {}", LogUtil.summarize(input, 300));
-        log.info("Output: {}", LogUtil.summarize(aiOutput.trim(), 300));
-        log.info("Tokens: [I:{}, O:{}, T:{}]", usage.inputTokenCount(), usage.outputTokenCount(), usage.totalTokenCount());
+        String sessionId = chatSessionMetrics.normalizeSessionId(MDC.get("sessionId"));
+        ChatSessionMetrics.TokenSnapshot tokenTotals = chatSessionMetrics.addAndGetTokenTotals(sessionId, usage);
+
+        long inputTokens = usage == null ? 0L : usage.inputTokenCount();
+        long outputTokens = usage == null ? 0L : usage.outputTokenCount();
+        long totalTokens = usage == null ? 0L : usage.totalTokenCount();
+        String aiOutput = response.aiMessage().text() == null ? "[N/A]" : response.aiMessage().text();
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("\n")
+                .append(AnsiOutput.toString(AnsiColor.BRIGHT_GREEN, AnsiStyle.BOLD,
+                        "==================== [后台LLM跟踪开始] ====================",
+                        AnsiStyle.NORMAL))
+                .append("\n");
+
+        sb.append(AnsiOutput.toString(AnsiColor.WHITE, "[服务信息]: ", AnsiColor.DEFAULT, MDC.get("serviceInfo"))).append("\n");
+        sb.append(AnsiOutput.toString(AnsiColor.WHITE, "[SessionId]: ", AnsiColor.DEFAULT, sessionId)).append("\n");
+        sb.append(AnsiOutput.toString(AnsiColor.WHITE, "[请求]: ", AnsiColor.DEFAULT, LogUtil.summarize(inputStr, 500))).append("\n");
+        sb.append(AnsiOutput.toString(AnsiColor.BRIGHT_GREEN, "[最终响应]: ", AnsiColor.DEFAULT, aiOutput.trim())).append("\n");
+        sb.append(AnsiOutput.toString(AnsiColor.WHITE, "[本次调用 Tokens]: ",
+                AnsiColor.BRIGHT_YELLOW, "[I:", inputTokens, " O:", outputTokens, " T:", totalTokens, "]\n",
+                AnsiColor.DEFAULT));
+        sb.append(AnsiOutput.toString(AnsiColor.WHITE, "[Session Tokens]: ",
+                AnsiColor.BRIGHT_YELLOW, "[I:", tokenTotals.input(), " O:", tokenTotals.output(), " T:", tokenTotals.total(), "]\n",
+                AnsiColor.DEFAULT));
+        sb.append(AnsiOutput.toString(AnsiColor.BRIGHT_GREEN, AnsiStyle.BOLD,
+                "==================== [后台LLM跟踪结束] ====================",
+                AnsiStyle.NORMAL))
+                .append("\n");
+
+        log.info(sb.toString());
     }
 
     @Override
     public void onError(ChatModelErrorContext context) {
-        log.error("调用失败 | Error: {}", context.error().toString());
+        log.error("调用失败，Error: {}", context.error().toString());
     }
 }

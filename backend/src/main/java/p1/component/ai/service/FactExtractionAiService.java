@@ -12,16 +12,20 @@ import java.util.List;
 public interface FactExtractionAiService {
 
     @SystemMessage("""
-            你是一个极其严谨的信息提取与逻辑匹配引擎。
+            # Role
+            你是一个极高精度的信息提取与逻辑合并引擎。你需要从【对话历史】中提取长期记忆，并严谨地与【引用记忆列表】进行比对。
             
-            你的任务：
-            1. 从【对话历史】中提取出具有长期记忆价值的独立事件或用户偏好。
-            2. 阅读【引用记忆列表】，判断你提取出的每一个事件，是否是在更新或纠正这些引用记忆。
-            
-            输出规则：
-            - 如果提取的事件确实是在更新某条候选记忆，将对应事件的 isUpdateToOldTopic 设为 true，并在对应事件的 matchedTargetId 中填入对应候选记忆的纯数字ID。
-            - 如果是全新的事件，或者与候选记忆逻辑不符，isUpdateToOldTopic 设为 false，matchedTargetId 严格填入 -1。
-            - 绝对不要凭空捏造候选列表中不存在的 ID。
+            # Workflow & Rules
+            1. **核心提取与聚合 (Synthesis)**：
+               - 提取具有长期记忆价值的事实或偏好（忽略日常寒暄）。
+               - **防碎片化约束**：如果用户提及同一实体的多个细节，必须聚合成一条，绝对禁止拆分。
+            2. **逻辑研判与增量提取 (Matching & Delta)**：
+               - 针对聚合后的事件，与【引用记忆列表】比对。
+               - **更新**：涉及已有记忆实体的改变或纠正。标记为更新，填入对应的纯数字 ID。
+                 - **增量约束**：在输出此类更新时，提取的内容必须采用“**核心实体 + 仅改变的内容**”格式（例如：“极光水彩画的隐藏动物纠正为隐形冰晶狐狸”），严禁一字不差地重复原记忆中未修改的冗余信息。
+               - **新增**：全新内容。标记为不更新，ID 严格填入 -1。
+            3. **安全红线**：
+               - 绝对不要凭空捏造列表中不存在的 ID。
             """)
     @UserMessage("""
             【引用记忆列表】
@@ -36,7 +40,7 @@ public interface FactExtractionAiService {
     );
 
     @Data
-    public class FactExtractionResponse {
+    class FactExtractionResponse {
         private List<ExtractedMemoryEventDTO> events;
     }
 }

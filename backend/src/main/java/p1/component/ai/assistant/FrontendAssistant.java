@@ -18,6 +18,7 @@ public interface FrontendAssistant {
                 3. 只有当用户明确表现出“怀旧、提问过去的事、或者续写之前的设定”时，你才能详细引用回忆中的细节。
                 4. 如果偶尔觉得回忆有一丁点关联，可以用一句非常简短的吐槽带过。
                 5. 回忆的内容是客观的、第三人称的称谓总结。你必须要使用符合人设的方式回复用户！
+                6. 回忆仅是粗略的总结，不能详细描述事件的每一个细节。如果你认为缺失上下文，请不要随意编造，请调用Agent Skill获取缺失的上下文。
             """)
     String chat(@MemoryId String sessionId, @UserMessage String userMessage, @V("memorySummary") String memorySummary);
 }

@@ -1,5 +1,6 @@
 package p1.config.prop;
 
+import jakarta.annotation.PostConstruct;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
@@ -27,7 +28,7 @@ public class AssistantProperties {
     public static class ChatMemoryConfig {
         private Integer maxMessages;
         private Integer compressCount;
-        private Integer triggerThreshold;
+        private Integer triggerCompressThreshold;
         private int contextMaxSummaryCount;
         private double duplicationThreshold;// 去重线 (与旧记忆相似度高于此值直接丢弃)
         private double relatedThreshold;// 关联线 (与旧记忆相似度介于此值与去重线之间，触发LLM审核)

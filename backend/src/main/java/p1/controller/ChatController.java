@@ -3,7 +3,14 @@ package p1.controller;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import p1.mdc.ChatSessionMetrics;
 import p1.model.ChatRequestDTO;
 import p1.model.TestChatResponseDTO;
 import p1.service.ChatService;
@@ -22,23 +29,30 @@ public class ChatController {
 
     private final ChatService chatService;
     private final ChatTestService chatTestService;
+    private final ChatSessionMetrics chatSessionMetrics;
 
     @PostMapping("/send")
     public Map<String, List<String>> send(@RequestBody ChatRequestDTO request) {
-        MDC.put("sessionId", request.getSessionId());
-        String rawReply = chatService.sendChatToLLM(request);
-        List<String> replyList;
-        if (request.isShortMode()) {
-            //如果是短句模式，按中文或英文句号、感叹号拆分
-            replyList = Arrays.stream(rawReply.split("[。！？!?\n]"))
-                    .filter(s -> !s.isBlank())
-                    .toList();
-        } else {
-            replyList = List.of(rawReply);
-        }
+        String sessionId = chatSessionMetrics.normalizeSessionId(request.getSessionId());
+        int currentRound = chatSessionMetrics.incrementAndGetRound(sessionId);
 
-        MDC.remove("sessionId");
-        return Map.of("reply", replyList);
+        MDC.put("sessionId", sessionId);
+        MDC.put("chatRound", String.valueOf(currentRound));
+        try {
+            String rawReply = chatService.sendChatToLLM(request);
+            List<String> replyList;
+            if (request.isShortMode()) {
+                replyList = Arrays.stream(rawReply.split("[。！？?!\\n]"))
+                        .filter(s -> !s.isBlank())
+                        .toList();
+            } else {
+                replyList = List.of(rawReply);
+            }
+            return Map.of("reply", replyList);
+        } finally {
+            MDC.remove("chatRound");
+            MDC.remove("sessionId");
+        }
     }
 
     @GetMapping("/test")

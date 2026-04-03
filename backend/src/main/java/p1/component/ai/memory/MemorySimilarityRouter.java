@@ -25,9 +25,11 @@ public class MemorySimilarityRouter {
         double THRESHOLD_RELATED = props.getChatMemory().getRelatedThreshold();   // 关联线 (介于此值与去重线之间，触发LLM审核)
 
         // 在向量库中寻找最相似的 1 条旧记忆
-        List<EmbeddingMatch<TextSegment>> matches = embeddingService.searchEmbedding(newEvent.getNarrative(), 1, THRESHOLD_RELATED).matches();
+        log.info("[相似度校验]由新事件 [{}] 触发，描述: {}", newEvent.getTopic(), newEvent.getNarrative());
+        List<EmbeddingMatch<TextSegment>> matches = embeddingService.searchEmbedding(newEvent.getNarrative(), 3, THRESHOLD_RELATED).matches();
 
         if (matches == null || matches.isEmpty()) {
+            log.info("[相似度校验]新事件 [{}] 与任何旧记忆相似度低，进行新增。", newEvent.getTopic());
             return new RoutingResult(MemoryRouteAction.INSERT_NEW, null);
         }
 
@@ -37,14 +39,13 @@ public class MemorySimilarityRouter {
         Long matchedDbId = Long.parseLong(Objects.requireNonNull(bestMatch.embedded().metadata().getString("db_id")));
         String oldNarrative = bestMatch.embedded().text();
 
-        log.info("相似度校验: 新事件 [{}] <-> 旧记忆 ID:{} , 得分: {}",
-                newEvent.getTopic(), matchedDbId, topScore);
+        log.info("[相似度校验]新事件 [{}] <-> 旧记忆 ID:{} , 得分: {}", newEvent.getTopic(), matchedDbId, topScore);
 
         if (topScore >= THRESHOLD_DUPLICATE) {
-            log.warn("新事件 [{}] 与旧记忆 ID:{} 的相似度过高，丢弃新事件。", newEvent.getTopic(), matchedDbId);
+            log.warn("[相似度校验]新事件 [{}] 与旧记忆 ID:{} 的相似度过高，丢弃新事件。", newEvent.getTopic(), matchedDbId);
             return new RoutingResult(MemoryRouteAction.DISCARD, null);
         } else if (topScore >= THRESHOLD_RELATED) {
-            // 得分在 0.82 ~ 0.95 之间，打包成候选对象，交给LLM判断
+            // 打包成候选对象，交给LLM判断
             CandidateMemory candidate = new CandidateMemory(matchedDbId, oldNarrative);
             return new RoutingResult(MemoryRouteAction.NEEDS_JUDGE, candidate);
         }

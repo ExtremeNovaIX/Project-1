@@ -16,6 +16,16 @@ public class ExtractedMemoryEventDTO {
     @Description("根据引用的旧话题列表，判断这是否是对之前某个旧话题的补充、纠正或更新？如果是新话题填 false，是旧话题更新填 true")
     private boolean isUpdateToOldTopic;
 
+    @Description("重要性打分 (1-10)，5 分及以上的事件才会被归档。" +
+            "分数示例：" +
+            "【1分】用户输入askgcauhsod等无意义字符；" +
+            "【3分】用户说早上好；" +
+            "【5分】用户提及自己中午吃了面；" +
+            "【6分】用户提及自己有只猫，猫名是'小白'" +
+            "【8分】用户提及自己的家庭以及自己的经历'"
+    )
+    private int importanceScore;
+
     @Description("如果 isUpdateToOldTopic=true，填入它匹配的候选记忆的纯数字ID。如果都不匹配或不是更新，严格填入 -1")
     private Long matchedTargetId;
 }

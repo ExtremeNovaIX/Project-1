@@ -18,7 +18,7 @@ public class ChatTestService {
     private final TestAssistant testAssistant;
 
     public TestChatResponseDTO runTestChat(Integer rounds) {
-        String sessionId = "test00";
+        String sessionId = "1";
         List<TestChatTurnDTO> messages = new ArrayList<>();
 
         for (int round = 1; round <= rounds; round++) {

@@ -24,6 +24,7 @@ import p1.component.ai.service.MemoryLogicJudgeAiService;
 import p1.component.ai.service.SummarizeAiService;
 import p1.component.ai.tools.MemorySearchTools;
 import p1.component.log.AiServiceLoggingListener;
+import p1.component.log.AssistantLoggingListener;
 import p1.config.prop.AssistantProperties;
 
 import java.io.IOException;
@@ -39,7 +40,8 @@ public class AiConfig {
 
     private final AssistantProperties props;
     private final Map<String, ArchivableChatMemory> memoryCache = new ConcurrentHashMap<>();
-    private final AiServiceLoggingListener listener;
+    private final AiServiceLoggingListener aiServiceLoggingListener;
+    private final AssistantLoggingListener assistantLoggingListener;
 
     @Bean
     public ChatModel chatLanguageModel() {
@@ -51,7 +53,7 @@ public class AiConfig {
                 .timeout(Duration.ofSeconds(chatModelConfig.getTimeoutSeconds()))
                 .logRequests(chatModelConfig.isLogEnabled())
                 .logResponses(chatModelConfig.isLogEnabled())
-                .listeners(Collections.singletonList(listener))
+                .listeners(Collections.singletonList(assistantLoggingListener))
                 .build();
     }
 
@@ -65,8 +67,21 @@ public class AiConfig {
                 .timeout(Duration.ofSeconds(config.getTimeoutSeconds()))
                 .logRequests(config.isLogEnabled())
                 .logResponses(config.isLogEnabled())
-                .listeners(Collections.singletonList(listener))
+                .listeners(Collections.singletonList(aiServiceLoggingListener))
                 .temperature(0.0)
+                .build();
+    }
+
+    @Bean(name = "testChatModel")
+    public ChatModel testChatModel() {
+        AssistantProperties.ChatModelConfig chatModelConfig = props.getChatModel();
+        return OpenAiChatModel.builder()
+                .apiKey(chatModelConfig.getApiKey())
+                .baseUrl(chatModelConfig.getBaseUrl())
+                .modelName(chatModelConfig.getModelName())
+                .timeout(Duration.ofSeconds(chatModelConfig.getTimeoutSeconds()))
+                .logRequests(chatModelConfig.isLogEnabled())
+                .logResponses(chatModelConfig.isLogEnabled())
                 .build();
     }
 
@@ -80,7 +95,7 @@ public class AiConfig {
     }
 
     @Bean
-    public TestAssistant testAssistant(@Qualifier("chatLanguageModel") ChatModel chatModel) {
+    public TestAssistant testAssistant(@Qualifier("testChatModel") ChatModel chatModel) {
         return AiServices.builder(TestAssistant.class)
                 .chatModel(chatModel)
                 .build();

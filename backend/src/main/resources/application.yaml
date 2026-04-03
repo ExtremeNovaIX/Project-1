@@ -27,11 +27,11 @@ assistant:
 
   chat-memory:
     max-messages: 80
-    trigger-threshold: 6
-    compress-count: 6
+    trigger-compress-threshold: 20
+    compress-count: 10
     duplication-threshold: 0.95
-    related-threshold: 0.70
-    context-max-summary-count: 30
+    related-threshold: 0.5
+    context-max-summary-count: 3
 
   embedding-model:
     api-key: ${DASHSCOPE_API_KEY:default_value}

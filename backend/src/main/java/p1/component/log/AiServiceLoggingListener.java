@@ -48,7 +48,7 @@ public class AiServiceLoggingListener implements ChatModelListener {
 
         sb.append(AnsiOutput.toString(AnsiColor.WHITE, "[服务信息]: ", AnsiColor.DEFAULT, MDC.get("serviceInfo"))).append("\n");
         sb.append(AnsiOutput.toString(AnsiColor.WHITE, "[SessionId]: ", AnsiColor.DEFAULT, sessionId)).append("\n");
-        sb.append(AnsiOutput.toString(AnsiColor.WHITE, "[请求]: ", AnsiColor.DEFAULT, LogUtil.summarize(inputStr, 500))).append("\n");
+        sb.append(AnsiOutput.toString(AnsiColor.WHITE, "[请求]: ", AnsiColor.DEFAULT, LogUtil.summarize(inputStr, 1000))).append("\n");
         sb.append(AnsiOutput.toString(AnsiColor.BRIGHT_GREEN, "[最终响应]: ", AnsiColor.DEFAULT, aiOutput.trim())).append("\n");
         sb.append(AnsiOutput.toString(AnsiColor.WHITE, "[本次调用 Tokens]: ",
                 AnsiColor.BRIGHT_YELLOW, "[I:", inputTokens, " O:", outputTokens, " T:", totalTokens, "]\n",

@@ -31,7 +31,7 @@ public class ChatController {
     private final ChatSessionMetrics chatSessionMetrics;
 
     @PostMapping("/send")
-    public Map<String, List<String>> send(@RequestBody ChatRequestDTO request) {
+    public List<String> send(@RequestBody ChatRequestDTO request) {
         String sessionId = chatSessionMetrics.normalizeSessionId(request.getSessionId());
         int currentRound = chatSessionMetrics.incrementAndGetRound(sessionId);
 
@@ -47,7 +47,7 @@ public class ChatController {
             } else {
                 replyList = List.of(rawReply);
             }
-            return Map.of("reply", replyList);
+            return replyList;
         } finally {
             MDC.remove("chatRound");
             MDC.remove("sessionId");

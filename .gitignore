@@ -2,3 +2,5 @@ backend/data/assistant_db.mv.db
 backend/data/assistant_db.trace.db
 /backend/logs
 /backend/data
+/frontend/arklight-frontend/chara/test
+/chara/test

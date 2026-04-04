@@ -73,6 +73,18 @@ const handleCharacterChange = (event: Event) => {
 
 const isImportedCharacter = (characterName: string) =>
   props.importedCharacters.some((character) => character.name === characterName);
+
+const getCharacterPrimaryEmotion = (character: CharacterProfile) =>
+  character.emotions[0]?.emotion ?? character.defaultEmotion;
+
+const getCharacterPrimaryImage = (character: CharacterProfile) => {
+  const primaryEmotion = character.emotions[0]?.emotion;
+  if (primaryEmotion && character.imageUrls[primaryEmotion]) {
+    return character.imageUrls[primaryEmotion];
+  }
+
+  return character.iconUrl;
+};
 </script>
 
 <template>
@@ -245,12 +257,12 @@ const isImportedCharacter = (characterName: string) =>
         >
           <div class="relative overflow-hidden border border-[#1A1A1A]/10 bg-[#F8F5EC]">
             <img
-              :src="character.iconUrl"
+              :src="getCharacterPrimaryImage(character)"
               :alt="character.name"
               class="h-52 w-full object-contain"
             />
             <div class="absolute left-3 top-3 bg-white/90 px-2 py-1 text-[10px] font-mono uppercase tracking-[0.2em] text-[#4D908E]">
-              {{ character.defaultEmotion }}
+              {{ getCharacterPrimaryEmotion(character) }}
             </div>
           </div>
 

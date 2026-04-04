@@ -29,6 +29,7 @@ public class ChatTestService {
             ChatRequestDTO chatRequest = new ChatRequestDTO();
             chatRequest.setSessionId(sessionId);
             chatRequest.setMessage(userMessage);
+            chatRequest.setCharacterName("test");
             chatRequest.setShortMode(false);
 
             String assistantReply = chatService.sendChatToLLM(chatRequest).trim();

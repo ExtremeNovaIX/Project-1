@@ -41,7 +41,11 @@ public class ChatController {
             String rawReply = chatService.sendChatToLLM(request);
             List<String> replyList;
             if (request.isShortMode()) {
-                replyList = Arrays.stream(rawReply.split("[。！？?!\\n]"))
+                String splitRegex = "(?<=[。！？?!;；…])(?![。！？?!;；…])|(?<=\\.)(?![。！？?!;；…\\.0-9])|(?=\\[)";
+                replyList = Arrays.stream(rawReply.split(splitRegex))
+                        .filter(s -> !s.isBlank())
+                        .map(String::trim)
+                        .map(s -> s.replace("。", ""))
                         .filter(s -> !s.isBlank())
                         .toList();
             } else {

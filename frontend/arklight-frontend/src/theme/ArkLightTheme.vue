@@ -399,10 +399,6 @@ const handleChatPointerMove = (event: MouseEvent) => {
   animation-play-state: paused;
 }
 
-.arklight-glitch:hover {
-  animation-play-state: running;
-}
-
 .arklight-expand-width {
   animation: arklight-expand-width 2s ease-out forwards;
 }

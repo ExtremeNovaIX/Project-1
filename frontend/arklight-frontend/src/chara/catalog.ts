@@ -85,6 +85,79 @@ const resolveImageFileName = (
   return '';
 };
 
+const getFirstImageFileName = (imageMap: Record<string, string>) =>
+  Object.keys(imageMap)[0] ?? '';
+
+const getEmotionAtIndex = (
+  rawValue: EmotionJsonValue,
+  index: number
+): CharacterEmotionReference | null => {
+  if (Array.isArray(rawValue)) {
+    const item = rawValue[index];
+    if (typeof item === 'string') {
+      return {
+        emotion: item.trim(),
+        fileName: item.trim()
+      };
+    }
+
+    if (!item || typeof item !== 'object') {
+      return null;
+    }
+
+    const objectItem = item as Record<string, unknown>;
+    const emotionName = [objectItem.name, objectItem.label, objectItem.key]
+      .find((value) => typeof value === 'string');
+    const imageName = [objectItem.file, objectItem.fileName, objectItem.image, objectItem.path]
+      .find((value) => typeof value === 'string');
+
+    if (typeof emotionName !== 'string') {
+      return null;
+    }
+
+    return {
+      emotion: emotionName.trim(),
+      fileName: (typeof imageName === 'string' ? imageName : emotionName).trim()
+    };
+  }
+
+  if (!rawValue || typeof rawValue !== 'object') {
+    return null;
+  }
+
+  const objectValue = rawValue as Record<string, unknown>;
+  if (Array.isArray(objectValue.emotions)) {
+    return getEmotionAtIndex(objectValue.emotions as EmotionJsonValue, index);
+  }
+
+  const indexedValue = objectValue[String(index)];
+  if (typeof indexedValue === 'string') {
+    return {
+      emotion: indexedValue.trim(),
+      fileName: indexedValue.trim()
+    };
+  }
+
+  if (!indexedValue || typeof indexedValue !== 'object') {
+    return null;
+  }
+
+  const indexedObject = indexedValue as Record<string, unknown>;
+  const emotionName = [indexedObject.name, indexedObject.label, indexedObject.key]
+    .find((value) => typeof value === 'string');
+  const imageName = [indexedObject.file, indexedObject.fileName, indexedObject.image, indexedObject.path]
+    .find((value) => typeof value === 'string');
+
+  if (typeof emotionName !== 'string') {
+    return null;
+  }
+
+  return {
+    emotion: emotionName.trim(),
+    fileName: (typeof imageName === 'string' ? imageName : emotionName).trim()
+  };
+};
+
 const parseEmotionList = (rawValue: EmotionJsonValue): CharacterEmotionReference[] => {
   const buildEntry = (emotion: string, fileName?: string) => ({
     emotion: emotion.trim(),
@@ -190,7 +263,8 @@ const buildCharacterCatalog = () => {
 
       const characterName = parsedPath.characterName;
       const imageMap = characterImages[characterName] ?? {};
-      const configuredEmotions = parseEmotionList(rawValue)
+      const parsedEmotions = parseEmotionList(rawValue);
+      const configuredEmotions = parsedEmotions
         .map((emotion) => ({
           emotion: emotion.emotion,
           fileName: resolveImageFileName(
@@ -222,12 +296,24 @@ const buildCharacterCatalog = () => {
         }
       });
 
-      const defaultEmotion = emotions[0].emotion;
+      const primaryEmotion = getEmotionAtIndex(rawValue, 0) ?? parsedEmotions[0] ?? null;
+      const defaultEmotion = primaryEmotion?.emotion ?? emotions[0].emotion;
+      const defaultFileName = primaryEmotion
+        ? resolveImageFileName(
+            imageMap,
+            primaryEmotion.emotion,
+            normalizeFileBaseName(primaryEmotion.fileName)
+          ) || emotions[0]?.fileName || getFirstImageFileName(imageMap)
+        : emotions[0]?.fileName || getFirstImageFileName(imageMap);
+
+      if (defaultEmotion && defaultFileName && imageMap[defaultFileName]) {
+        imageUrls[defaultEmotion] = imageMap[defaultFileName];
+      }
 
       return {
         name: characterName,
         defaultEmotion,
-        emotions,
+        emotions: parsedEmotions.length ? parsedEmotions : emotions,
         iconUrl: imageUrls[defaultEmotion] ?? '',
         imageUrls
       } satisfies CharacterProfile;

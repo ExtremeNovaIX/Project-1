@@ -100,13 +100,13 @@ const createStardustParticles = (count: number) =>
     id: `stardust-${index}`,
     top: Math.random() * 88 + 4,
     left: Math.random() * 118 - 12,
-    size: Number((Math.random() * 2.1 + 1.8).toFixed(2)),
-    glow: Number((Math.random() * 18 + 10).toFixed(2)),
-    duration: Number((Math.random() * 8 + 6).toFixed(2)),
+    size: Number((Math.random() * 1.8 + 1.6).toFixed(2)),
+    glow: Number((Math.random() * 18 + 18).toFixed(2)),
+    duration: Number((Math.random() * 10 + 9).toFixed(2)),
     delay: Number((Math.random() * 4.5).toFixed(2)),
-    driftX: Math.round(Math.random() * 60 + 18),
-    driftY: -Math.round(Math.random() * 48 + 10),
-    opacity: Number((Math.random() * 0.28 + 0.34).toFixed(2))
+    driftX: Math.round(Math.random() * 72 + 28),
+    driftY: -Math.round(Math.random() * 56 + 14),
+    opacity: Number((Math.random() * 0.22 + 0.58).toFixed(2))
   }));
 
 const clampNumber = (value: number, min: number, max: number) =>

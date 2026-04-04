@@ -38,6 +38,7 @@ const buildParticleStyle = (particle: StardustParticle) => ({
   z-index: 70;
   overflow: hidden;
   pointer-events: none;
+  opacity: 1;
 }
 
 .stardust-dot {
@@ -63,29 +64,32 @@ const buildParticleStyle = (particle: StardustParticle) => ({
   height: 100%;
   background: var(--dot-core);
   box-shadow:
-    0 0 10px var(--dot-glow-core),
+    0 0 0 1.35px var(--dot-edge),
+    0 0 12px var(--dot-glow-core),
     0 0 var(--dot-glow, 16px) var(--dot-glow-soft);
 }
 
 .stardust-dot::after {
-  width: calc(100% + 10px);
-  height: calc(100% + 10px);
+  width: calc(100% + 16px);
+  height: calc(100% + 16px);
   background: radial-gradient(circle, var(--dot-aura) 0%, rgba(255, 255, 255, 0) 72%);
-  opacity: 0.85;
+  opacity: 0.96;
 }
 
 .stardust-dot--warm {
-  --dot-core: rgba(255, 255, 255, 0.96);
-  --dot-glow-core: rgba(255, 248, 218, 0.95);
-  --dot-glow-soft: rgba(241, 172, 108, 0.3);
-  --dot-aura: rgba(255, 238, 196, 0.42);
+  --dot-core: rgba(255, 255, 255, 1);
+  --dot-glow-core: rgba(255, 255, 255, 1);
+  --dot-glow-soft: rgba(255, 250, 232, 0.96);
+  --dot-aura: rgba(255, 255, 255, 0.78);
+  --dot-edge: rgba(94, 72, 38, 0.42);
 }
 
 .stardust-dot--cool {
-  --dot-core: rgba(255, 255, 255, 0.98);
-  --dot-glow-core: rgba(229, 248, 255, 0.98);
-  --dot-glow-soft: rgba(125, 211, 252, 0.24);
-  --dot-aura: rgba(186, 230, 253, 0.34);
+  --dot-core: rgba(255, 255, 255, 1);
+  --dot-glow-core: rgba(255, 255, 255, 1);
+  --dot-glow-soft: rgba(235, 245, 255, 0.96);
+  --dot-aura: rgba(255, 255, 255, 0.78);
+  --dot-edge: rgba(64, 78, 98, 0.42);
 }
 
 @keyframes stardust-float {

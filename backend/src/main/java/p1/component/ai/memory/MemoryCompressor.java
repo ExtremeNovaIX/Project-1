@@ -1,6 +1,8 @@
 package p1.component.ai.memory;
 
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.UserMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -12,6 +14,7 @@ import p1.component.ai.tools.MemorySaveTools;
 import p1.model.ExtractedMemoryEventDTO;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -31,8 +34,13 @@ public class MemoryCompressor {
         log.info("[记忆压缩]开始异步压缩 {} 条近期记忆...", toCompress.size());
         try {
             String referenceStr = (references == null || references.isEmpty()) ? "无引用记忆" : String.join("\n", references);
+
             // 提取事件并打分
-            List<ExtractedMemoryEventDTO> events = factExtractorAiService.extractAndMatchFacts(toCompress, referenceStr).getEvents();
+            List<ChatMessage> pureChatHistory = toCompress.stream()
+                    .filter(msg -> msg instanceof UserMessage ||
+                            (msg instanceof AiMessage && !((AiMessage) msg).hasToolExecutionRequests()))
+                    .toList();
+            List<ExtractedMemoryEventDTO> events = factExtractorAiService.extractAndMatchFacts(pureChatHistory, referenceStr).getEvents();
             log.info("[记忆压缩]提取到 {} 条事件。正在压缩处理事件中...", events.size());
 
             for (ExtractedMemoryEventDTO event : events) {
@@ -40,7 +48,7 @@ public class MemoryCompressor {
             }
 
             // 生成摘要提供给前台，此处的摘要不存库，仅提供上下文
-            String newIncrementalSummary = summarizeAiService.summarize(toCompress);
+            String newIncrementalSummary = summarizeAiService.summarize(pureChatHistory);
             summaryCacheManager.updateSummary(sessionId, newIncrementalSummary);
             if (onSuccess != null) onSuccess.run();
         } catch (Exception e) {

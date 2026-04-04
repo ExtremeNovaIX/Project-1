@@ -8,5 +8,6 @@ import lombok.NoArgsConstructor;
 public class ChatRequestDTO {
     private String message;
     private String sessionId;
+    private String characterName;
     private boolean shortMode;
 }

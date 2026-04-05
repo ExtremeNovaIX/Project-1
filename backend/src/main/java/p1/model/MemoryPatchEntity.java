@@ -15,19 +15,25 @@ public class MemoryPatchEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 关联主记忆的ID
     @Column(nullable = false)
     private Long targetMemoryId;
 
-    // 补丁内容
     @Column(columnDefinition = "TEXT", nullable = false)
     private String correctionContent;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(nullable = false)
+    private Boolean compressed = false;
+
+    private LocalDateTime compressedAt;
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
+        if (this.compressed == null) {
+            this.compressed = false;
+        }
     }
 }

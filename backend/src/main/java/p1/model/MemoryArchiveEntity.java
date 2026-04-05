@@ -14,10 +14,6 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 public class MemoryArchiveEntity {
-    public static final String STATUS_FRAGMENT = "FRAGMENT";
-    public static final String STATUS_CONSOLIDATED = "CONSOLIDATED";
-    public static final String STATUS_ARCHIVED = "ARCHIVED";
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -35,7 +31,10 @@ public class MemoryArchiveEntity {
 
     private LocalDateTime createdAt;
 
-    private String status;
+    private LocalDateTime updatedAt;
+
+    @Column(nullable = false, columnDefinition = "integer default 0")
+    private Integer mergeCount = 0;
 
     @Convert(converter = LongListConverter.class)
     @Column(columnDefinition = "VARCHAR(255)")
@@ -43,7 +42,16 @@ public class MemoryArchiveEntity {
 
     @PrePersist
     protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        this.setStatus(STATUS_FRAGMENT);
+        LocalDateTime now = LocalDateTime.now();
+        this.createdAt = now;
+        this.updatedAt = now;
+        if (this.mergeCount == null) {
+            this.mergeCount = 0;
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
     }
 }

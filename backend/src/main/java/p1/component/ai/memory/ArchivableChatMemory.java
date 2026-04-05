@@ -4,7 +4,9 @@ import dev.langchain4j.data.message.*;
 import dev.langchain4j.memory.ChatMemory;
 import lombok.extern.slf4j.Slf4j;
 import p1.config.prop.AssistantProperties;
+import p1.utils.ChatMessageUtil;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -22,9 +24,11 @@ public class ArchivableChatMemory implements ChatMemory {
     private final MemoryCompressor compressor;
     private final ChatMessageAppender dbAppender;
 
-    private final int triggerThreshold; // 触发压缩的阈值
-    private final int compressCount;    // 每次压缩抽取的条数
+    private final int triggerThreshold;
+    private final int compressCount;
     private final Set<String> referenceBuffer = ConcurrentHashMap.newKeySet();
+
+    private volatile Long currentDialogueBatchId;
 
     public ArchivableChatMemory(String sessionId, MemoryCompressor compressor,
                                 ChatMessageAppender dbAppender, AssistantProperties assistantProperties) {
@@ -33,6 +37,7 @@ public class ArchivableChatMemory implements ChatMemory {
         this.dbAppender = dbAppender;
         this.triggerThreshold = assistantProperties.getChatMemory().getTriggerCompressThreshold();
         this.compressCount = assistantProperties.getChatMemory().getCompressCount();
+        this.currentDialogueBatchId = dbAppender.nextDialogueBatchId();
     }
 
     @Override
@@ -42,30 +47,40 @@ public class ArchivableChatMemory implements ChatMemory {
 
     @Override
     public void add(ChatMessage message) {
-        // 刷新SystemMessage
-        if (message instanceof SystemMessage) {
-            messages.removeIf(m -> m instanceof SystemMessage);
-            messages.addFirst(message);
+        LocalDateTime time = LocalDateTime.now();
+        ChatMessage chatMessage = ChatMessageUtil.withTimestamp(message, time);
+
+        if (chatMessage instanceof SystemMessage) {
+            messages.removeIf(existing -> existing instanceof SystemMessage);
+            messages.addFirst(chatMessage);
             return;
         }
 
-        boolean isFinalTurnMessage = (message instanceof AiMessage aiMsg
-                && aiMsg.text() != null
-                && !aiMsg.hasToolExecutionRequests());
-
+        boolean isFinalTurnMessage = ChatMessageUtil.isAiFinalResponseMessage(chatMessage);
         if (isFinalTurnMessage) {
             purifyContext();
         }
 
-        messages.add(message);
-        dbAppender.appendAsync(sessionId, message);
+        dbAppender.appendAsync(sessionId, chatMessage, currentDialogueBatchId);
+        messages.add(chatMessage);
 
+        compressMemory(isFinalTurnMessage);
+    }
+
+    private void compressMemory(boolean isFinalTurnMessage) {
         if (isFinalTurnMessage && messages.size() >= triggerThreshold && isCompressing.compareAndSet(false, true)) {
-            log.info("记忆触达压缩水位线 {}，触发记忆压缩...", triggerThreshold);
+            log.info("[记忆压缩触发] 当前消息数达到阈值 {}，准备压缩。", triggerThreshold);
             List<ChatMessage> toCompress = new ArrayList<>(messages.subList(0, compressCount));
             List<String> references = new ArrayList<>(referenceBuffer);
 
+            Long batchIdToCompress = currentDialogueBatchId;
+            currentDialogueBatchId = dbAppender.nextDialogueBatchId();
+            dbAppender.markBatchProcessing(batchIdToCompress);
+
             compressor.compressAsync(sessionId, toCompress, references, () -> {
+                // 压缩完成后，将当前批次的所有对话消息标记为 ARCHIVED 状态作为事务结尾
+                dbAppender.archiveDialogueBatch(batchIdToCompress);
+
                 for (int i = 0; i < toCompress.size(); i++) {
                     if (!messages.isEmpty()) {
                         messages.removeFirst();
@@ -73,28 +88,28 @@ public class ArchivableChatMemory implements ChatMemory {
                 }
                 referenceBuffer.clear();
                 isCompressing.set(false);
-                log.info("记忆后台压缩完成，当前记忆条数为 {} 条", messages.size());
+                log.info("[记忆压缩完成] 当前内存窗口剩余 {} 条消息。", messages.size());
             });
         }
     }
 
     private void purifyContext() {
         for (int i = messages.size() - 1; i >= 0; i--) {
-            ChatMessage msg = messages.get(i);
+            ChatMessage message = messages.get(i);
 
-            if (msg instanceof ToolExecutionResultMessage toolMsg) {
-                if (toolMsg.text() != null && toolMsg.text().contains("[记忆ID:")) {
-                    referenceBuffer.add(toolMsg.text());
-                    log.info("从清理器中提取带有记忆ID参照的消息 {}，已放入缓冲池", toolMsg.text());
+            if (message instanceof ToolExecutionResultMessage toolMessage) {
+                if (toolMessage.text() != null && toolMessage.text().contains("[记忆ID:")) {
+                    referenceBuffer.add(toolMessage.text());
+                    log.info("[记忆引用提取] 捕获带记忆 ID 的工具结果：{}", toolMessage.text());
                 }
                 messages.remove(i);
-            } else if (msg instanceof AiMessage && ((AiMessage) msg).hasToolExecutionRequests()) {
+            } else if (message instanceof AiMessage aiMessage && aiMessage.hasToolExecutionRequests()) {
                 messages.remove(i);
-            } else if (msg instanceof UserMessage) {
+            } else if (message instanceof UserMessage) {
                 break;
             }
         }
-        log.info("记忆窗口清理完成，当前记忆条数为 {} 条", messages.size());
+        log.info("[记忆窗口净化] 当前窗口剩余 {} 条消息。", messages.size());
     }
 
     @Override

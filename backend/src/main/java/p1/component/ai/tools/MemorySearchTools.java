@@ -1,12 +1,10 @@
 package p1.component.ai.tools;
 
 import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.store.embedding.EmbeddingMatch;
-import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import p1.model.MemoryArchiveEntity;
 import p1.model.UserPreferenceEntity;
 import p1.repo.UserPreferenceRepository;
 import p1.service.EmbeddingService;
@@ -24,12 +22,12 @@ public class MemorySearchTools {
 
     @Tool("""
             在数据库中查询用户的核心档案信息，例如姓名、生日、基础喜好，如果查不到则会在内部调用向量检索方法。
-            当用户询问身份强相关的事实答案时优先使用，尽量把查询意图压缩为核心关键词。
+            当用户询问身份、强相关事实答案时优先使用，尽量把查询意图压缩为核心关键词。
             可能会返回多个结果，请选择和当前语境最相关的内容。
             """)
     public String getCoreFact(String keyword) {
-        String cleanKey = keyword.replaceAll("[，。！!,.?？]", "").strip();
-        log.info("LLM开始调用 getCoreFact ，关键词：{}", cleanKey);
+        String cleanKey = keyword.replaceAll("[，。！？!,.?]", "").strip();
+        log.info("LLM开始调用 getCoreFact，关键词：{}", cleanKey);
 
         List<UserPreferenceEntity> matches = userRepo.findBySmartMatch(cleanKey);
         if (!matches.isEmpty()) {
@@ -56,25 +54,32 @@ public class MemorySearchTools {
             可能会返回多个结果，请选择和当前语境最相关的内容。
             """)
     public String searchLongTermMemory(String query) {
-        log.info("LLM开始调用 searchLongTermMemory ，查询词：{}", query);
-        EmbeddingSearchResult<TextSegment> searchResult = embeddingService.searchEmbedding(query, 3, 0.5);
+        log.info("LLM开始调用 searchLongTermMemory，查询词：{}", query);
+        List<EmbeddingService.MemoryArchiveMatch> matches = embeddingService.searchMemoryArchives(query, 3, 0.5);
 
-        if (searchResult.matches().isEmpty()) {
+        if (matches.isEmpty()) {
             log.info("LLM调用 searchLongTermMemory 完成，结果为未命中");
             return "LLM调用 searchLongTermMemory 结果：未找到与“" + query + "”相关的长期记忆。";
         }
 
         StringBuilder resultBuilder = new StringBuilder();
-        for (EmbeddingMatch<TextSegment> match : searchResult.matches()) {
-            TextSegment segment = match.embedded();
-            String dbId = segment.metadata().getString("db_id");
+        for (EmbeddingService.MemoryArchiveMatch match : matches) {
+            MemoryArchiveEntity archive = match.archive();
+            String detailedSummary = normalize(archive.getDetailedSummary());
+            if (detailedSummary.isBlank()) {
+                detailedSummary = normalize(archive.getKeywordSummary());
+            }
 
-            resultBuilder.append("[记忆ID: ").append(dbId).append("] ")
-                    .append(segment.text()).append("\n");
+            resultBuilder.append("[记忆ID: ").append(archive.getId()).append("] ")
+                    .append(detailedSummary).append("\n");
         }
+
         String memoryText = resultBuilder.toString();
-        log.info("LLM调用 searchLongTermMemory 成功，命中数量：{}，结果摘要：{}",
-                searchResult.matches().size(), memoryText);
+        log.info("LLM调用 searchLongTermMemory 成功，命中数量：{}，结果摘要：{}", matches.size(), memoryText);
         return "LLM调用 searchLongTermMemory 结果：查询成功。检索到的相关长期记忆如下：" + memoryText;
+    }
+
+    private String normalize(String text) {
+        return text == null ? "" : text.trim();
     }
 }

@@ -1,6 +1,9 @@
 package p1.utils;
 
 import dev.langchain4j.data.message.*;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+
+import java.time.LocalDateTime;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -90,5 +93,45 @@ public class ChatMessageUtil {
             }
         }
         return "[N/A]";
+    }
+
+    /**
+     * 判断消息是否为AI最终响应消息
+     * @param message 要判断的消息对象
+     * @return 是否为AI最终响应消息
+     */
+    public static boolean isAiFinalResponseMessage(ChatMessage message) {
+        return message instanceof AiMessage aiMessage
+                && aiMessage.text() != null
+                && !aiMessage.hasToolExecutionRequests();
+    }
+
+    /**
+     * 判断消息是否为正式对话消息
+     * @param message 要判断的消息对象
+     * @return 是否为正式对话消息
+     */
+    public static boolean isFormalDialogue(ChatMessage message) {
+        return message instanceof UserMessage || isAiFinalResponseMessage(message);
+    }
+
+    public static ChatMessage withTimestamp(ChatMessage message, LocalDateTime time) {
+        String timedText = TimedMessageUtil.prefix(time, extractText(message));
+
+        return switch (message) {
+            case null -> null;
+            case UserMessage ignored -> UserMessage.from(timedText);
+            case SystemMessage ignored -> SystemMessage.from(timedText);
+            case ToolExecutionResultMessage toolMessage ->
+                    ToolExecutionResultMessage.from(toolMessage.id(), toolMessage.toolName(), timedText);
+            case AiMessage aiMessage -> {
+                List<ToolExecutionRequest> requests = aiMessage.toolExecutionRequests();
+                if (requests != null && !requests.isEmpty()) {
+                    yield AiMessage.from(timedText, requests);
+                }
+                yield AiMessage.from(timedText);
+            }
+            default -> message;
+        };
     }
 }

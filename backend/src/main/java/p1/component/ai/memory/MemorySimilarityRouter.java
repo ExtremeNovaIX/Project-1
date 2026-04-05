@@ -1,17 +1,15 @@
 package p1.component.ai.memory;
 
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.store.embedding.EmbeddingMatch;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import p1.config.prop.AssistantProperties;
 import p1.model.ExtractedMemoryEventDTO;
+import p1.model.MemoryArchiveEntity;
 import p1.model.enums.MemoryRouteAction;
 import p1.service.EmbeddingService;
 
 import java.util.List;
-import java.util.Objects;
 
 @Slf4j
 @Service
@@ -21,35 +19,44 @@ public class MemorySimilarityRouter {
     private final AssistantProperties props;
 
     public RoutingResult evaluate(ExtractedMemoryEventDTO newEvent) {
-        double THRESHOLD_DUPLICATE = props.getChatMemory().getDuplicationThreshold(); // 去重线 (高于此值直接丢弃)
-        double THRESHOLD_RELATED = props.getChatMemory().getRelatedThreshold();   // 关联线 (介于此值与去重线之间，触发LLM审核)
+        double THRESHOLD_DUPLICATE = props.getChatMemory().getDuplicationThreshold();
+        double THRESHOLD_RELATED = props.getChatMemory().getRelatedThreshold();
 
-        // 在向量库中寻找最相似的 1 条旧记忆
-        log.info("[相似度校验]由新事件 [{}] 触发，描述: {}", newEvent.getTopic(), newEvent.getNarrative());
-        List<EmbeddingMatch<TextSegment>> matches = embeddingService.searchEmbedding(newEvent.getNarrative(), 3, THRESHOLD_RELATED).matches();
+        String retrievalQuery = normalize(newEvent.getKeywordSummary());
+        if (retrievalQuery.isBlank()) {
+            retrievalQuery = normalize(newEvent.getNarrative());
+        }
 
-        if (matches == null || matches.isEmpty()) {
-            log.info("[相似度校验]新事件 [{}] 与任何旧记忆相似度低，进行新增。", newEvent.getTopic());
+        log.info("[相似度校验] 由新事件 [{}] 触发，查询文本：{}", newEvent.getTopic(), retrievalQuery);
+        List<EmbeddingService.MemoryArchiveMatch> matches = embeddingService.searchMemoryArchives(retrievalQuery, 3, THRESHOLD_RELATED);
+
+        if (matches.isEmpty()) {
+            log.info("[相似度校验] 新事件 [{}] 与任何旧记忆相似度都较低，进入新增。", newEvent.getTopic());
             return new RoutingResult(MemoryRouteAction.INSERT_NEW, null);
         }
 
-        EmbeddingMatch<TextSegment> bestMatch = matches.getFirst();
+        EmbeddingService.MemoryArchiveMatch bestMatch = matches.getFirst();
+        MemoryArchiveEntity archive = bestMatch.archive();
         double topScore = bestMatch.score();
+        String oldNarrative = normalize(archive.getDetailedSummary());
+        if (oldNarrative.isBlank()) {
+            oldNarrative = normalize(archive.getKeywordSummary());
+        }
 
-        Long matchedDbId = Long.parseLong(Objects.requireNonNull(bestMatch.embedded().metadata().getString("db_id")));
-        String oldNarrative = bestMatch.embedded().text();
-
-        log.info("[相似度校验]新事件 [{}] <-> 旧记忆 ID:{} , 得分: {}", newEvent.getTopic(), matchedDbId, topScore);
+        log.info("[相似度校验] 新事件 [{}] <-> 旧记忆 ID:{}，得分：{}", newEvent.getTopic(), archive.getId(), topScore);
 
         if (topScore >= THRESHOLD_DUPLICATE) {
-            log.warn("[相似度校验]新事件 [{}] 与旧记忆 ID:{} 的相似度过高，丢弃新事件。", newEvent.getTopic(), matchedDbId);
+            log.warn("[相似度校验] 新事件 [{}] 与旧记忆 ID:{} 的相似度过高，丢弃新事件。", newEvent.getTopic(), archive.getId());
             return new RoutingResult(MemoryRouteAction.DISCARD, null);
         } else if (topScore >= THRESHOLD_RELATED) {
-            // 打包成候选对象，交给LLM判断
-            CandidateMemory candidate = new CandidateMemory(matchedDbId, oldNarrative);
+            CandidateMemory candidate = new CandidateMemory(archive.getId(), oldNarrative);
             return new RoutingResult(MemoryRouteAction.NEEDS_JUDGE, candidate);
         }
         return new RoutingResult(MemoryRouteAction.INSERT_NEW, null);
+    }
+
+    private String normalize(String text) {
+        return text == null ? "" : text.trim();
     }
 
     public record RoutingResult(MemoryRouteAction action, CandidateMemory candidate) {

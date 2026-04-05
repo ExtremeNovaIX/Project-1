@@ -1,16 +1,12 @@
 package p1.config;
 
-import dev.langchain4j.community.rag.content.retriever.lucene.LuceneEmbeddingStore;
-import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
 import dev.langchain4j.service.AiServices;
-import dev.langchain4j.store.embedding.EmbeddingStore;
 import lombok.AllArgsConstructor;
-import org.apache.lucene.store.FSDirectory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,13 +17,14 @@ import p1.component.ai.memory.ChatMessageAppender;
 import p1.component.ai.memory.MemoryCompressor;
 import p1.component.ai.service.FactExtractionAiService;
 import p1.component.ai.service.MemoryLogicJudgeAiService;
-import p1.component.ai.service.SummarizeAiService;
+import p1.component.ai.service.MemoryPatchMergeAiService;
 import p1.component.ai.tools.MemorySearchTools;
+import p1.component.ai.vector.LuceneMemoryVectorStore;
+import p1.component.ai.vector.MemoryVectorStore;
 import p1.component.log.AiServiceLoggingListener;
 import p1.component.log.AssistantLoggingListener;
 import p1.config.prop.AssistantProperties;
 
-import java.io.IOException;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.Collections;
@@ -86,7 +83,9 @@ public class AiConfig {
     }
 
     @Bean
-    public FrontendAssistant frontendAssistant(@Qualifier("chatLanguageModel") ChatModel chatModel, ChatMemoryProvider chatMemoryProvider, MemorySearchTools memorySearchTools) {
+    public FrontendAssistant frontendAssistant(@Qualifier("chatLanguageModel") ChatModel chatModel,
+                                               ChatMemoryProvider chatMemoryProvider,
+                                               MemorySearchTools memorySearchTools) {
         return AiServices.builder(FrontendAssistant.class)
                 .chatModel(chatModel)
                 .chatMemoryProvider(chatMemoryProvider)
@@ -98,13 +97,6 @@ public class AiConfig {
     public TestAssistant testAssistant(@Qualifier("testChatModel") ChatModel chatModel) {
         return AiServices.builder(TestAssistant.class)
                 .chatModel(chatModel)
-                .build();
-    }
-
-    @Bean
-    public SummarizeAiService summarizeAiService(@Qualifier("backendChatModel") ChatModel backendChatModel) {
-        return AiServices.builder(SummarizeAiService.class)
-                .chatModel(backendChatModel)
                 .build();
     }
 
@@ -123,7 +115,15 @@ public class AiConfig {
     }
 
     @Bean
-    public ChatMemoryProvider chatMemoryProvider(MemoryCompressor compressor, ChatMessageAppender dbAppender) {
+    public MemoryPatchMergeAiService memoryPatchMergeAiService(@Qualifier("backendChatModel") ChatModel backendChatModel) {
+        return AiServices.builder(MemoryPatchMergeAiService.class)
+                .chatModel(backendChatModel)
+                .build();
+    }
+
+    @Bean
+    public ChatMemoryProvider chatMemoryProvider(MemoryCompressor compressor,
+                                                 ChatMessageAppender dbAppender) {
         return memoryId -> {
             String sessionId = memoryId.toString();
             return memoryCache.computeIfAbsent(sessionId,
@@ -143,10 +143,7 @@ public class AiConfig {
     }
 
     @Bean
-    public EmbeddingStore<TextSegment> embeddingStore() throws IOException {
-        AssistantProperties.EmbeddingStoreConfig embeddingStoreConfig = props.getEmbeddingStore();
-        return LuceneEmbeddingStore.builder()
-                .directory(FSDirectory.open(Paths.get(embeddingStoreConfig.getPath())))
-                .build();
+    public MemoryVectorStore memoryVectorStore() {
+        return new LuceneMemoryVectorStore(Paths.get(props.getEmbeddingStore().getPath()));
     }
 }

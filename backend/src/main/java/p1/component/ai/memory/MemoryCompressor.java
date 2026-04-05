@@ -9,12 +9,10 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import p1.component.ai.service.FactExtractionAiService;
 import p1.component.ai.service.MemoryLogicJudgeAiService;
-import p1.component.ai.service.SummarizeAiService;
-import p1.component.ai.tools.MemorySaveTools;
 import p1.model.ExtractedMemoryEventDTO;
+import p1.service.MemoryWriteService;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -23,11 +21,10 @@ public class MemoryCompressor {
     private final SummaryCacheManager summaryCacheManager;
 
     private final FactExtractionAiService factExtractorAiService;
-    private final SummarizeAiService summarizeAiService;
     private final MemoryLogicJudgeAiService logicJudgeAiService;
     private final MemorySimilarityRouter similarityRouter;
 
-    private final MemorySaveTools memoryStorage;
+    private final MemoryWriteService memoryStorage;
 
     @Async("asyncTaskExecutor")
     public void compressAsync(String sessionId, List<ChatMessage> toCompress, List<String> references, Runnable onSuccess) {
@@ -40,16 +37,16 @@ public class MemoryCompressor {
                     .filter(msg -> msg instanceof UserMessage ||
                             (msg instanceof AiMessage && !((AiMessage) msg).hasToolExecutionRequests()))
                     .toList();
-            List<ExtractedMemoryEventDTO> events = factExtractorAiService.extractAndMatchFacts(pureChatHistory, referenceStr).getEvents();
+            FactExtractionAiService.FactExtractionResponse response = factExtractorAiService.extractAndMatchFacts(pureChatHistory, referenceStr);
+            List<ExtractedMemoryEventDTO> events = response.getEvents();
             log.info("[记忆压缩]提取到 {} 条事件。正在压缩处理事件中...", events.size());
 
             for (ExtractedMemoryEventDTO event : events) {
                 processMemoryEvent(event);
             }
 
-            // 生成摘要提供给前台，此处的摘要不存库，仅提供上下文
-            String newIncrementalSummary = summarizeAiService.summarize(pureChatHistory);
-            summaryCacheManager.updateSummary(sessionId, newIncrementalSummary);
+            // 此处的摘要不存库，仅提供上下文
+            summaryCacheManager.updateSummary(sessionId, response.getSummary());
             if (onSuccess != null) onSuccess.run();
         } catch (Exception e) {
             log.error("[记忆压缩]后台记忆压缩失败。", e);
@@ -58,7 +55,7 @@ public class MemoryCompressor {
 
     public void processMemoryEvent(ExtractedMemoryEventDTO event) {
         if (event.getImportanceScore() < 5) {
-            log.info("[事件丢弃]事件重要性过低。主题[{}]，描述: {}", event.getTopic(), event.getNarrative());
+            log.info("[事件丢弃]事件重要性过低({}分)。主题[{}]，描述: {}", event.getImportanceScore(), event.getTopic(), event.getNarrative());
             return;
         }
         // 通过LLM评估
@@ -79,12 +76,12 @@ public class MemoryCompressor {
                     memoryStorage.patchMemory(candidate.dbId(), event.getNarrative());
                 } else {
                     log.info("[事件新建] 主题为[{}]的事件执行新建记忆。原因：与已有相关记忆(ID：{}) 相差较大。\n当前事件描述: {}；\n引用记忆描述: {}", event.getTopic(), candidate.dbId(), event.getNarrative(), candidate.text());
-                    memoryStorage.saveNewMemory(event.getTopic(), event.getNarrative());
+                    memoryStorage.saveNewMemory(event.getTopic(), event.getKeywordSummary(), event.getNarrative());
                 }
                 break;
 
             case INSERT_NEW:
-                memoryStorage.saveNewMemory(event.getTopic(), event.getNarrative());
+                memoryStorage.saveNewMemory(event.getTopic(), event.getKeywordSummary(), event.getNarrative());
                 break;
         }
     }

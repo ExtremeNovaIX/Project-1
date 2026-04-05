@@ -7,25 +7,30 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 public class ExtractedMemoryEventDTO {
-    @Description("事件的主题或核心实体，例如：'科幻故事'、'去西藏旅游'、'老王'")
+
+    @Description("事件的核心实体或焦点主题，保持简练。示例：'科幻小说偏好'、'西藏自驾游'、'宠物猫小白'")
     private String topic;
 
-    @Description("事件的详细描述，包含起因、经过、结果或具体喜好")
+    @Description("记忆的详细正文。需包含完整的因果、背景和结果。如果是更新旧记忆，仅描述本次的增量补充或修正内容。")
     private String narrative;
 
-    @Description("根据引用的旧话题列表，判断这是否是对之前某个旧话题的补充、纠正或更新？如果是新话题填 false，是旧话题更新填 true")
+    @Description("用于向量检索的高密度特征摘要（2-3句）。必须保留关键实体、时间、地点或专属名词等检索锚点。")
+    private String keywordSummary;
+
+    @Description("判断此事件是否是对【引用记忆列表】中某个已有话题的补充或纠正。新话题=false，更新旧话题=true。")
     private boolean isUpdateToOldTopic;
 
-    @Description("重要性打分 (1-10)，5 分及以上的事件才会被归档。" +
-            "分数示例：" +
-            "【1分】用户输入askgcauhsod等无意义字符；" +
-            "【3分】用户说早上好；" +
-            "【5分】用户提及自己中午吃了面；" +
-            "【6分】用户提及自己有只猫，猫名是'小白'" +
-            "【8分】用户提及自己的家庭以及自己的经历'"
-    )
+    @Description("""
+            重要性评估 (1-10分)，只有大于五分的事件才会被存入记忆中
+            示例：
+            1分: 无意义乱码
+            3分: 基础问候（如你好、早安、晚安等）
+            5分: 提及日常单次行为(如午饭吃了面)
+            6分: 提及具体个人属性(如养了猫叫小白)
+            8分: 深刻的个人经历、核心价值观或重要家庭信息
+            """)
     private int importanceScore;
 
-    @Description("如果 isUpdateToOldTopic=true，填入它匹配的候选记忆的纯数字ID。如果都不匹配或不是更新，严格填入 -1")
+    @Description("关联匹配：如果 isUpdateToOldTopic 为 true，则填入匹配引用的纯数字ID。如果为 false（全新记忆），必须严格填入 -1。")
     private Long matchedTargetId;
 }

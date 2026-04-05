@@ -32,6 +32,9 @@ assistant:
     duplication-threshold: 0.95
     related-threshold: 0.5
     context-max-summary-count: 3
+    patch-merge-threshold: 3
+    patch-merge-max-count: 5
+    patch-merge-scan-fixed-delay-ms: 1800000
 
   embedding-model:
     api-key: ${DASHSCOPE_API_KEY:default_value}

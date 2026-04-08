@@ -8,10 +8,34 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "assistant")
 public class AssistantProperties {
-    private ChatModelConfig chatModel;
-    private EmbeddingModelConfig embeddingModel;
+    private Mode mode = Mode.API;
+    private ProviderConfig api;
+    private ProviderConfig local;
     private EmbeddingStoreConfig embeddingStore;
     private ChatMemoryConfig chatMemory;
+
+    public ChatModelConfig activeChatModel() {
+        return activeProvider().getChatModel();
+    }
+
+    public EmbeddingModelConfig activeEmbeddingModel() {
+        return activeProvider().getEmbeddingModel();
+    }
+
+    public ProviderConfig activeProvider() {
+        return mode == Mode.LOCAL ? local : api;
+    }
+
+    public enum Mode {
+        API,
+        LOCAL
+    }
+
+    @Data
+    public static class ProviderConfig {
+        private ChatModelConfig chatModel;
+        private EmbeddingModelConfig embeddingModel;
+    }
 
     @Data
     public static class ChatModelConfig {

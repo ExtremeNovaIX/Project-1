@@ -18,28 +18,40 @@ spring:
       ddl-auto: update
 
 assistant:
-  chat-model:
-    api-key: ${DEEPSEEK_API_KEY:default_value}
-    base-url: https://api.deepseek.com
-    model-name: deepseek-chat
-    timeout-seconds: 60
-    log-enabled: false
+  mode: api
+
+  api:
+    chat-model:
+      api-key: ${DEEPSEEK_API_KEY:default_value}
+      base-url: https://api.deepseek.com
+      model-name: deepseek-chat
+      timeout-seconds: 60
+      log-enabled: false
+    embedding-model:
+      api-key: ${DASHSCOPE_API_KEY:default_value}
+      base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+      model-name: text-embedding-v3
+
+  local:
+    chat-model:
+      base-url: http://127.0.0.1:1234/v1
+      model-name: gemma-4-e4b-rp
+      timeout-seconds: 120
+      log-enabled: false
+    embedding-model:
+      base-url: http://127.0.0.1:1234/v1
+      model-name: text-embedding-embedding
 
   chat-memory:
     max-messages: 80
     trigger-compress-threshold: 20
-    compress-count: 10
+    compress-count: 16
     duplication-threshold: 0.95
     related-threshold: 0.5
     context-max-summary-count: 3
     patch-merge-threshold: 3
     patch-merge-max-count: 5
     patch-merge-scan-fixed-delay-ms: 1800000
-
-  embedding-model:
-    api-key: ${DASHSCOPE_API_KEY:default_value}
-    base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
-    model-name: text-embedding-v3
 
   embedding-store:
     path: data/vector_indices

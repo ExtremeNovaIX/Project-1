@@ -17,6 +17,8 @@ import p1.mdc.ChatSessionMetrics;
 import p1.utils.ChatMessageUtil;
 import p1.utils.LogUtil;
 
+import static p1.utils.SessionUtil.normalizeSessionId;
+
 @Component
 @Slf4j
 @RequiredArgsConstructor
@@ -31,7 +33,7 @@ public class AiServiceLoggingListener implements ChatModelListener {
         ChatRequest request = context.chatRequest();
         String inputStr = ChatMessageUtil.formatMessageList(request.messages());
 
-        String sessionId = chatSessionMetrics.normalizeSessionId(MDC.get("sessionId"));
+        String sessionId = normalizeSessionId(MDC.get("sessionId"));
         ChatSessionMetrics.TokenSnapshot tokenTotals = chatSessionMetrics.addAndGetTokenTotals(sessionId, usage);
 
         long inputTokens = usage == null ? 0L : usage.inputTokenCount();

@@ -12,6 +12,7 @@ public class AssistantProperties {
     private ProviderConfig api;
     private ProviderConfig local;
     private EmbeddingStoreConfig embeddingStore;
+    private MdRepositoryConfig mdRepository;
     private ChatMemoryConfig chatMemory;
 
     public ChatModelConfig activeChatModel() {
@@ -62,7 +63,7 @@ public class AssistantProperties {
 
     @Data
     public static class EmbeddingModelConfig {
-        private String apiKey;
+        private String apiKey;  
         private String baseUrl;
         private String modelName;
     }
@@ -70,5 +71,10 @@ public class AssistantProperties {
     @Data
     public static class EmbeddingStoreConfig {
         private String path;
+    }
+
+    @Data
+    public static class MdRepositoryConfig {
+        private String path = "data/memory";
     }
 }

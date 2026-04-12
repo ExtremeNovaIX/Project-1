@@ -17,6 +17,8 @@ import org.springframework.boot.ansi.AnsiStyle;
 import org.springframework.stereotype.Component;
 import p1.mdc.ChatSessionMetrics;
 
+import static p1.utils.SessionUtil.normalizeSessionId;
+
 @Component
 @Slf4j
 @RequiredArgsConstructor
@@ -30,7 +32,7 @@ public class AssistantLoggingListener implements ChatModelListener {
         ChatRequest request = context.chatRequest();
         TokenUsage usage = response.tokenUsage();
 
-        String id = chatSessionMetrics.normalizeSessionId(MDC.get("sessionId"));
+        String id = normalizeSessionId(MDC.get("sessionId"));
         int currentRound = resolveCurrentRound(id);
         ChatSessionMetrics.TokenSnapshot tokenTotals = chatSessionMetrics.addAndGetTokenTotals(id, usage);
 

@@ -18,7 +18,7 @@ spring:
       ddl-auto: update
 
 assistant:
-  mode: api
+  mode: local
 
   api:
     chat-model:
@@ -50,11 +50,19 @@ assistant:
     related-threshold: 0.5
     context-max-summary-count: 3
     patch-merge-threshold: 3
-    patch-merge-max-count: 5
+    patch-merge-max-count: 3
     patch-merge-scan-fixed-delay-ms: 1800000
 
   embedding-store:
     path: data/vector_indices
+
+  md-repository:
+    path: data/memory
+
+  markdown-migration:
+    enabled: false
+    vault-path: data/memory
+    overwrite-existing: false
 
 logging:
   level:

@@ -4,79 +4,60 @@ import dev.langchain4j.agent.tool.Tool;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import p1.model.MemoryArchiveEntity;
-import p1.model.UserPreferenceEntity;
-import p1.repo.UserPreferenceRepository;
+import p1.model.MemoryArchiveDocument;
 import p1.service.EmbeddingService;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Component
 @AllArgsConstructor
 public class MemorySearchTools {
 
-    private final UserPreferenceRepository userRepo;
     private final EmbeddingService embeddingService;
 
     @Tool("""
-            在数据库中查询用户的核心档案信息，例如姓名、生日、基础喜好，如果查不到则会在内部调用向量检索方法。
-            当用户询问身份、强相关事实答案时优先使用，尽量把查询意图压缩为核心关键词。
+            使用向量检索查询用户的核心档案信息，例如姓名、生日、基础喜好。
+            当用户询问身份、强相关事实答案时优先使用，尽量把查询意图压缩为高信息密度的一句话。
             可能会返回多个结果，请选择和当前语境最相关的内容。
             """)
     public String getCoreFact(String keyword) {
-        String cleanKey = keyword.replaceAll("[，。！？!,.?]", "").strip();
-        log.info("LLM开始调用 getCoreFact，关键词：{}", cleanKey);
-
-        List<UserPreferenceEntity> matches = userRepo.findBySmartMatch(cleanKey);
-        if (!matches.isEmpty()) {
-            String facts = matches.stream()
-                    .sorted((a, b) -> {
-                        int diffA = Math.abs(a.getAliases().length() - cleanKey.length());
-                        int diffB = Math.abs(b.getAliases().length() - cleanKey.length());
-                        return Integer.compare(diffA, diffB);
-                    })
-                    .limit(3)
-                    .map(item -> String.format("别名：%s；内容：%s", item.getAliases(), item.getConfigValue()))
-                    .collect(Collectors.joining("；"));
-
-            log.info("LLM调用 getCoreFact 完成，命中数量：{}，结果摘要：{}", matches.size(), facts);
-            return "LLM调用 getCoreFact 结果：查询成功。与关键词“" + cleanKey + "”相关的档案信息如下：" + facts;
-        }
-
-        log.info("LLM调用 getCoreFact 完成，数据库未命中，转向向量检索，关键词：{}", cleanKey);
-        return "数据库未命中，转向向量检索：" + searchLongTermMemory(keyword);
+        String cleanKey = keyword.replaceAll("[，。！？,.?]", "").strip();
+        log.info("[记忆工具] 开始查询核心事实，keyword={}", cleanKey);
+        return searchLongTermMemory(cleanKey);
     }
 
     @Tool("""
-            在过往记忆中进行向量化语义搜索，适用于查询过去的经历、感受、聊天片段或模糊回忆。
-            可能会返回多个结果，请选择和当前语境最相关的内容。
+            在长期记忆中进行语义检索，适用于查询过往经历、情绪变化、关系推进或模糊回忆。
+            可能会返回多条结果，请选择与当前语境最相关的内容。
             """)
     public String searchLongTermMemory(String query) {
-        log.info("LLM开始调用 searchLongTermMemory，查询词：{}", query);
+        log.info("[记忆工具] 开始检索长期记忆，query={}", query);
         List<EmbeddingService.MemoryArchiveMatch> matches = embeddingService.searchMemoryArchives(query, 3, 0.5);
 
         if (matches.isEmpty()) {
-            log.info("LLM调用 searchLongTermMemory 完成，结果为未命中");
-            return "LLM调用 searchLongTermMemory 结果：未找到与“" + query + "”相关的长期记忆。";
+            log.info("[记忆工具] 未检索到相关长期记忆，query={}", query);
+            return "未检索到与“" + query + "”相关的长期记忆。";
         }
 
-        StringBuilder resultBuilder = new StringBuilder();
+        StringBuilder resultBuilder = new StringBuilder("检索到的相关长期记忆如下：\n");
         for (EmbeddingService.MemoryArchiveMatch match : matches) {
-            MemoryArchiveEntity archive = match.archive();
+            MemoryArchiveDocument archive = match.archive();
             String detailedSummary = normalize(archive.getDetailedSummary());
             if (detailedSummary.isBlank()) {
                 detailedSummary = normalize(archive.getKeywordSummary());
             }
 
-            resultBuilder.append("[记忆ID: ").append(archive.getId()).append("] ")
-                    .append(detailedSummary).append("\n");
+            resultBuilder.append("[记忆ID: ")
+                    .append(archive.getId())
+                    .append("] ")
+                    .append(detailedSummary)
+                    .append("\n");
         }
 
-        String memoryText = resultBuilder.toString();
-        log.info("LLM调用 searchLongTermMemory 成功，命中数量：{}，结果摘要：{}", matches.size(), memoryText);
-        return "LLM调用 searchLongTermMemory 结果：查询成功。检索到的相关长期记忆如下：" + memoryText;
+        String result = resultBuilder.toString().trim();
+        log.info("[记忆工具] 长期记忆检索完成，命中数量={}，query={}", matches.size(), query);
+        return result;
     }
 
     private String normalize(String text) {

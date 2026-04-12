@@ -5,7 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import p1.config.prop.AssistantProperties;
 import p1.model.ExtractedMemoryEventDTO;
-import p1.model.MemoryArchiveEntity;
+import p1.model.MemoryArchiveDocument;
 import p1.model.enums.MemoryRouteAction;
 import p1.service.EmbeddingService;
 
@@ -36,7 +36,7 @@ public class MemorySimilarityRouter {
         }
 
         EmbeddingService.MemoryArchiveMatch bestMatch = matches.getFirst();
-        MemoryArchiveEntity archive = bestMatch.archive();
+            MemoryArchiveDocument archive = bestMatch.archive();
         double topScore = bestMatch.score();
         String oldNarrative = normalize(archive.getDetailedSummary());
         if (oldNarrative.isBlank()) {

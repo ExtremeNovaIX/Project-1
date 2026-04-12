@@ -8,7 +8,8 @@ import dev.langchain4j.service.V;
 public interface FrontendAssistant {
     @SystemMessage("""
             你有一些Agent Skill可以帮助你完成任务，请看具体说明。为了提高效率，Agent Skill最好并行调用。
-            如果缺失上下文，绝对不能随意编造！请调用Agent Skill获取缺失的上下文。当用户表示搜索内容有误时，绝对不能无证据的基于之前的搜索结果进行推测，要确保回复内容来自实际的工具调用结果，避免幻觉。
+            如果缺失上下文，绝对不能随意编造！请调用Agent Skill获取缺失的上下文。当用户主动聊起你当前记忆中没有的事件时，请主动调用Agent Skill搜索。
+            当用户表示搜索内容有误时，绝对不能无证据的基于之前的搜索结果进行推测，要确保回复内容来自实际的工具调用结果，避免幻觉。
             【人设】：{{rolePrompt}}
             【近期记忆摘要】：{{memorySummary}}
             【严格的记忆使用规则】：

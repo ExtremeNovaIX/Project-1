@@ -9,10 +9,10 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "chat_messages")
+@Table(name = "chat_logs")
 @Data
 @NoArgsConstructor
-public class ChatMessageEntity {
+public class ChatLogEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -34,7 +34,7 @@ public class ChatMessageEntity {
         this.createdAt = LocalDateTime.now();
     }
 
-    public ChatMessageEntity(ChatMessage message, String sessionId) {
+    public ChatLogEntity(ChatMessage message, String sessionId) {
         this.sessionId = sessionId;
         this.role = message.type().toString();
         this.content = ChatMessageSerializer.messageToJson(message);

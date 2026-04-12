@@ -9,13 +9,12 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import p1.component.ai.vector.MemoryVectorDocument;
 import p1.component.ai.vector.MemoryVectorDocumentIds;
 import p1.component.ai.vector.MemoryVectorStore;
-import p1.model.MemoryArchiveEntity;
-import p1.repo.MemoryArchiveRepository;
+import p1.model.MemoryArchiveDocument;
+import p1.service.markdown.MemoryArchiveMarkdownService;
 
 import java.util.List;
 
@@ -26,7 +25,7 @@ public class EmbeddingService {
 
     private final MemoryVectorStore memoryVectorStore;
     private final EmbeddingModel embeddingModel;
-    private final MemoryArchiveRepository archiveRepo;
+    private final MemoryArchiveMarkdownService archiveService;
 
     public EmbeddingSearchResult<TextSegment> searchEmbedding(String query, int maxResults, double minScore) {
         Embedding queryEmbedding = embeddingModel.embed(query).content();
@@ -40,55 +39,60 @@ public class EmbeddingService {
                 .toList();
     }
 
-    public void indexNewMemoryArchive(MemoryArchiveEntity archive) {
+    public void indexNewMemoryArchive(MemoryArchiveDocument archive) {
         MemoryVectorDocument document = buildArchiveDocument(archive);
         if (document == null) {
-            log.warn("[向量索引写入跳过] 记忆 ID {} 无法构建有效索引文本。", archive == null ? null : archive.getId());
+            log.warn("[向量索引写入跳过] 记忆 ID {} 无法构建有效索引文本", archive == null ? null : archive.getId());
             return;
         }
 
         try {
             memoryVectorStore.add(document);
-            log.info("[向量索引写入] 已为记忆 ID {} 写入新向量，当前后端：{}。", archive.getId(), memoryVectorStore.backendType());
+            log.info("[向量索引写入] 已为记忆 ID {} 写入向量，后端={}",
+                    archive.getId(), memoryVectorStore.backendType());
         } catch (RuntimeException e) {
             if (!shouldFallbackToRebuild(e)) {
                 throw e;
             }
 
-            log.warn("[向量索引写入降级] 记忆 ID {} 的增量写入失败，检测到索引 schema 冲突，转为全量重建。", archive.getId(), e);
+            log.warn("[向量索引写入降级] 记忆 ID {} 的增量写入失败，转为全量重建",
+                    archive.getId(), e);
             rebuildAllMemoryArchiveEmbeddings();
         }
     }
 
-    public void refreshMemoryArchiveEmbedding(MemoryArchiveEntity archive) {
+    public void refreshMemoryArchiveEmbedding(MemoryArchiveDocument archive) {
         MemoryVectorDocument document = buildArchiveDocument(archive);
         if (document == null) {
-            log.warn("[向量索引更新跳过] 记忆 ID {} 无法构建有效索引文本。", archive == null ? null : archive.getId());
+            log.warn("[向量索引更新跳过] 记忆 ID {} 无法构建有效索引文本", archive == null ? null : archive.getId());
             return;
         }
 
         if (memoryVectorStore.supportsDocumentUpdate()) {
             try {
                 memoryVectorStore.update(document);
-                log.info("[向量索引更新] 已增量更新记忆 ID {} 的向量，当前后端：{}。", archive.getId(), memoryVectorStore.backendType());
+                log.info("[向量索引更新] 已增量更新记忆 ID {} 的向量，后端={}",
+                        archive.getId(), memoryVectorStore.backendType());
                 return;
             } catch (RuntimeException e) {
                 if (!shouldFallbackToRebuild(e)) {
                     throw e;
                 }
 
-                log.warn("[向量索引更新降级] 记忆 ID {} 的增量更新失败，检测到索引 schema 冲突，转为全量重建。", archive.getId(), e);
+                log.warn("[向量索引更新降级] 记忆 ID {} 的增量更新失败，转为全量重建",
+                        archive.getId(), e);
                 rebuildAllMemoryArchiveEmbeddings();
                 return;
             }
         }
 
-        log.info("[向量索引更新] 当前后端 {} 不支持单条更新，转为全量重建。", memoryVectorStore.backendType());
+        log.info("[向量索引更新] 当前后端 {} 不支持单条更新，转为全量重建",
+                memoryVectorStore.backendType());
         rebuildAllMemoryArchiveEmbeddings();
     }
 
     public void rebuildAllMemoryArchiveEmbeddings() {
-        List<MemoryArchiveEntity> archives = archiveRepo.findAll(Sort.by(Sort.Direction.ASC, "id"));
+        List<MemoryArchiveDocument> archives = archiveService.findAllOrderByIdAsc();
         List<MemoryVectorDocument> documents = archives.stream()
                 .map(this::buildArchiveDocument)
                 .filter(document -> document != null)
@@ -97,7 +101,7 @@ public class EmbeddingService {
         memoryVectorStore.rebuild(documents);
     }
 
-    private MemoryVectorDocument buildArchiveDocument(MemoryArchiveEntity archive) {
+    private MemoryVectorDocument buildArchiveDocument(MemoryArchiveDocument archive) {
         if (archive == null || archive.getId() == null) {
             return null;
         }
@@ -123,7 +127,7 @@ public class EmbeddingService {
 
         String dbIdText = match.embedded().metadata().getString("db_id");
         if (dbIdText == null || dbIdText.isBlank()) {
-            log.warn("[向量检索结果跳过] 检索命中缺少 db_id 元数据。");
+            log.warn("[向量检索结果跳过] 命中结果缺少 db_id 元数据");
             return null;
         }
 
@@ -131,19 +135,19 @@ public class EmbeddingService {
         try {
             archiveId = Long.parseLong(dbIdText);
         } catch (NumberFormatException e) {
-            log.warn("[向量检索结果跳过] 检索命中的 db_id {} 不是有效数字。", dbIdText);
+            log.warn("[向量检索结果跳过] 命中结果的 db_id={} 不是有效数字", dbIdText);
             return null;
         }
 
-        MemoryArchiveEntity archive = archiveRepo.findById(archiveId).orElse(null);
+        MemoryArchiveDocument archive = archiveService.findById(archiveId).orElse(null);
         if (archive == null) {
-            log.warn("[向量检索结果跳过] db_id {} 对应的 MemoryArchive 不存在。", archiveId);
+            log.warn("[向量检索结果跳过] db_id={} 对应的记忆不存在", archiveId);
             return null;
         }
         return new MemoryArchiveMatch(archive, match.score());
     }
 
-    private String buildArchiveIndexText(MemoryArchiveEntity archive) {
+    private String buildArchiveIndexText(MemoryArchiveDocument archive) {
         String keywordSummary = normalize(archive.getKeywordSummary());
         if (!keywordSummary.isBlank()) {
             return keywordSummary;
@@ -151,7 +155,7 @@ public class EmbeddingService {
 
         String detailedSummary = normalize(archive.getDetailedSummary());
         if (!detailedSummary.isBlank()) {
-            log.warn("[向量索引文本降级] 记忆 ID {} 缺少关键词摘要，降级使用详细摘要写入向量库。", archive.getId());
+            log.warn("[向量索引文本降级] 记忆 ID {} 缺少关键词摘要，改用详细摘要写入向量库", archive.getId());
         }
         return detailedSummary;
     }
@@ -178,6 +182,6 @@ public class EmbeddingService {
         return false;
     }
 
-    public record MemoryArchiveMatch(MemoryArchiveEntity archive, double score) {
+    public record MemoryArchiveMatch(MemoryArchiveDocument archive, double score) {
     }
 }

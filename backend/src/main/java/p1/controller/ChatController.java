@@ -13,6 +13,8 @@ import p1.service.ChatTestService;
 import java.util.Arrays;
 import java.util.List;
 
+import static p1.utils.SessionUtil.normalizeSessionId;
+
 @RestController
 @CrossOrigin
 @RequestMapping("/api/chat")
@@ -26,7 +28,8 @@ public class ChatController {
 
     @PostMapping("/send")
     public List<String> send(@RequestBody ChatRequestDTO request) {
-        String sessionId = chatSessionMetrics.normalizeSessionId(request.getSessionId());
+        String sessionId = normalizeSessionId(request.getSessionId());
+        request.setSessionId(sessionId);
         int currentRound = chatSessionMetrics.incrementAndGetRound(sessionId);
 
         MDC.put("sessionId", sessionId);

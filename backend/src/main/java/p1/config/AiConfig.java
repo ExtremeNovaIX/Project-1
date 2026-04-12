@@ -29,6 +29,9 @@ import p1.component.log.AiServiceLoggingListener;
 import p1.component.log.AssistantLoggingListener;
 import p1.config.prop.AssistantProperties;
 import org.springframework.util.StringUtils;
+import p1.repo.db.ChatLogRepository;
+import p1.service.markdown.DialogueMarkdownService;
+import p1.utils.SessionUtil;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -113,11 +116,13 @@ public class AiConfig {
 
     @Bean
     public ChatMemoryProvider chatMemoryProvider(MemoryCompressor compressor,
-                                                 ChatMessageAppender dbAppender) {
+                                                 ChatMessageAppender dbAppender,
+                                                 DialogueMarkdownService dialogueMarkdownService,
+                                                 ChatLogRepository chatLogRepository) {
         return memoryId -> {
-            String sessionId = memoryId.toString();
+            String sessionId = SessionUtil.normalizeSessionId(memoryId.toString());
             return memoryCache.computeIfAbsent(sessionId,
-                    id -> new ArchivableChatMemory(id, compressor, dbAppender, props)
+                    id -> new ArchivableChatMemory(id, compressor, dbAppender, dialogueMarkdownService, props, chatLogRepository)
             );
         };
     }

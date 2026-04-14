@@ -29,7 +29,11 @@ public class MemoryCompressor {
     private final MemoryWriteService memoryStorage;
 
     @Async("asyncTaskExecutor")
-    public void compressAsync(String sessionId, List<ChatMessage> toCompress, List<String> references, Runnable onSuccess) {
+    public void compressAsync(String sessionId,
+                              List<ChatMessage> toCompress,
+                              List<String> references,
+                              Runnable onSuccess,
+                              Runnable onFailure) {
         log.info("[记忆压缩] 开始异步压缩，sessionId={}，消息数={}", sessionId, toCompress.size());
         try {
             String referenceStr = (references == null || references.isEmpty()) ? "无引用记忆" : String.join("\n", references);
@@ -56,6 +60,9 @@ public class MemoryCompressor {
             }
         } catch (Exception e) {
             log.error("[记忆压缩失败] 后台记忆压缩异常，sessionId={}", sessionId, e);
+            if (onFailure != null) {
+                onFailure.run();
+            }
         }
     }
 

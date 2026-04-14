@@ -163,6 +163,45 @@ const calculateHumanDelay = (messageContent: string) => {
   return Math.floor(lowerBound + Math.random() * (upperBound - lowerBound));
 };
 
+const calculateAssistantMessageDelay = (messageContent: string) => {
+  if (!frontendSettings.value.shortModeEnabled) {
+    return clampNumber(frontendSettings.value.responseDelayMs, 0, 10000);
+  }
+
+  return calculateHumanDelay(messageContent);
+};
+
+const mergeAssistantReplySteps = (nextSteps: AssistantReplyStep[]): AssistantReplyStep | null => {
+  const availableSteps = nextSteps.filter((step) => step.content.trim());
+  if (!availableSteps.length) {
+    return null;
+  }
+
+  return {
+    id: availableSteps[0].id,
+    content: availableSteps.map((step) => step.content.trim()).join('\n'),
+    emotion: availableSteps.find((step) => step.emotion)?.emotion ?? null
+  };
+};
+
+const appendAssistantStep = (step: AssistantReplyStep) => {
+  const matchedEmotion = resolveCharacterEmotion(step.emotion);
+  if (matchedEmotion) {
+    activeEmotion.value = matchedEmotion;
+  }
+
+  if (!step.content) {
+    return;
+  }
+
+  messages.value.push({
+    id: step.id,
+    role: 'ai',
+    content: step.content,
+    emotion: matchedEmotion ?? step.emotion
+  });
+};
+
 const clearBootTimers = () => {
   if (bootTitleTimer) {
     clearTimeout(bootTitleTimer);
@@ -323,26 +362,32 @@ const scheduleAssistantMessages = (nextSteps: AssistantReplyStep[]) =>
       return;
     }
 
+    if (!frontendSettings.value.shortModeEnabled) {
+      const mergedStep = mergeAssistantReplySteps(nextSteps);
+      if (!mergedStep) {
+        isAssistantTyping.value = false;
+        resolve();
+        return;
+      }
+
+      const responseTimer = setTimeout(() => {
+        appendAssistantStep(mergedStep);
+        pendingResponseTimers.delete(responseTimer);
+        isAssistantTyping.value = false;
+        resolve();
+      }, calculateAssistantMessageDelay(mergedStep.content || '...'));
+
+      pendingResponseTimers.add(responseTimer);
+      return;
+    }
+
     let accumulatedDelay = 0;
 
     nextSteps.forEach((step, index) => {
-      accumulatedDelay += calculateHumanDelay(step.content || '...');
+      accumulatedDelay += calculateAssistantMessageDelay(step.content || '...');
 
       const responseTimer = setTimeout(() => {
-        const matchedEmotion = resolveCharacterEmotion(step.emotion);
-        if (matchedEmotion) {
-          activeEmotion.value = matchedEmotion;
-        }
-
-        if (step.content) {
-          messages.value.push({
-            id: step.id,
-            role: 'ai',
-            content: step.content,
-            emotion: matchedEmotion ?? step.emotion
-          });
-        }
-
+        appendAssistantStep(step);
         pendingResponseTimers.delete(responseTimer);
 
         if (index === nextSteps.length - 1) {
@@ -395,7 +440,7 @@ const sendMessage = async () => {
         sessionId: frontendSettings.value.sessionId,
         characterName: getRoleNameForRequest(),
         roleName: getRoleNameForRequest(),
-        shortMode: true
+        shortMode: frontendSettings.value.shortModeEnabled
       })
     });
 

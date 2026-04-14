@@ -41,7 +41,7 @@ public class DialogueMessageRecoveryService {
             return;
         }
 
-        log.info("[对话恢复] 发现 {} 个 session 存在未完成的对话批次，正在处理...", sessionIds.size());
+        log.info("[对话恢复] 发现 {} 个 session 存在未完成的对话批次，正在恢复...", sessionIds.size());
         for (String sessionId : sessionIds) {
             ChatMessageAppender.DialogueBatch processingBatch = dialogueMarkdownService.findProcessing(sessionId)
                     .map(this::toDialogueBatch)
@@ -87,7 +87,8 @@ public class DialogueMessageRecoveryService {
                     )
                     .map(this::toDialogueBatch)
                     .ifPresent(this::submitRecoveryCompression);
-        });
+        }, () -> log.warn("[对话恢复] sessionId={}, batchId={} 压缩失败，保留 processing 等待下次恢复",
+                batch.sessionId(), batch.batchId()));
     }
 
     private ChatMessageAppender.DialogueBatch toDialogueBatch(DialogueBatchDocument document) {

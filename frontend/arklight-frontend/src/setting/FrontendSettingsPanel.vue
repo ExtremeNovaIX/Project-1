@@ -51,8 +51,19 @@ const handleNumberInput = (
 };
 
 const handleBootAnimationChange = (event: Event) => {
+  handleBooleanSettingChange('bootAnimationEnabled', event);
+};
+
+const handleShortModeChange = (event: Event) => {
+  handleBooleanSettingChange('shortModeEnabled', event);
+};
+
+const handleBooleanSettingChange = (
+  key: 'bootAnimationEnabled' | 'shortModeEnabled',
+  event: Event
+) => {
   const target = event.target as HTMLInputElement | null;
-  updateSetting('bootAnimationEnabled', Boolean(target?.checked));
+  updateSetting(key, Boolean(target?.checked) as FrontendSettings[typeof key]);
 };
 
 const handleThemeChange = (event: Event) => {
@@ -222,6 +233,21 @@ const getCharacterPrimaryImage = (character: CharacterProfile) =>
       </label>
     </div>
 
+    <div class="grid gap-4 md:grid-cols-2">
+      <label class="flex items-center justify-between gap-4 border-2 border-[#1A1A1A] bg-[#1A1A1A] px-5 py-4 text-white">
+        <div>
+          <span class="block text-[11px] font-black uppercase tracking-[0.3em]">短句模式</span>
+          <p class="mt-2 text-xs text-white/60">默认开启。关闭后会让后端的 shortMode=false，并停用按句长调整的显示间隔。</p>
+        </div>
+
+        <input
+          :checked="props.settings.shortModeEnabled"
+          type="checkbox"
+          class="h-5 w-5 accent-[#E85D04]"
+          @change="handleShortModeChange"
+        />
+      </label>
+
     <label class="flex items-center justify-between gap-4 border-2 border-[#1A1A1A] bg-[#1A1A1A] px-5 py-4 text-white">
       <div>
         <span class="block text-[11px] font-black uppercase tracking-[0.3em]">启动动画</span>
@@ -235,6 +261,7 @@ const getCharacterPrimaryImage = (character: CharacterProfile) =>
         @change="handleBootAnimationChange"
       />
     </label>
+    </div>
 
     <section class="space-y-4 border-t border-[#1A1A1A]/10 pt-6">
       <div class="space-y-2">

@@ -1,5 +1,6 @@
 package p1.model;
 
+import jakarta.persistence.PrePersist;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -15,7 +16,7 @@ public class MemoryPatchDocument {
 
     private String correctionContent;
 
-    private LocalDateTime createdAt;
+    private LocalDateTime createdAt = LocalDateTime.now();
 
     private Boolean compressed = false;
 

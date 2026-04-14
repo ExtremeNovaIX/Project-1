@@ -45,13 +45,19 @@ assistant:
   chat-memory:
     max-messages: 80
     trigger-compress-threshold: 20
-    compress-count: 16
-    duplication-threshold: 0.95
+    compress-count: 14
+    duplication-threshold: 0.93
     related-threshold: 0.5
     context-max-summary-count: 3
     patch-merge-threshold: 3
     patch-merge-max-count: 3
     patch-merge-scan-fixed-delay-ms: 1800000
+
+  lock:
+    session-lock-wait-timeout-ms: 10000
+    session-lock-retry-count: 3
+    session-lock-retry-delay-ms: 100
+    compression-lease-timeout-ms: 300000
 
   embedding-store:
     path: data/vector_indices

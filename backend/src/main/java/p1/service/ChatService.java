@@ -9,6 +9,7 @@ import p1.component.ai.assistant.FrontendAssistant;
 import p1.component.ai.memory.SummaryCacheManager;
 import p1.model.ChatRequestDTO;
 
+
 @Service
 @RequiredArgsConstructor
 @Slf4j

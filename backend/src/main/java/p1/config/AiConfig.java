@@ -28,6 +28,7 @@ import p1.component.ai.vector.MemoryVectorStore;
 import p1.component.log.AiServiceLoggingListener;
 import p1.component.log.AssistantLoggingListener;
 import p1.config.prop.AssistantProperties;
+import p1.config.prop.LockProperties;
 import org.springframework.util.StringUtils;
 import p1.repo.db.ChatLogRepository;
 import p1.service.markdown.DialogueMarkdownService;
@@ -118,11 +119,12 @@ public class AiConfig {
     public ChatMemoryProvider chatMemoryProvider(MemoryCompressor compressor,
                                                  ChatMessageAppender dbAppender,
                                                  DialogueMarkdownService dialogueMarkdownService,
+                                                 LockProperties lockProperties,
                                                  ChatLogRepository chatLogRepository) {
         return memoryId -> {
             String sessionId = SessionUtil.normalizeSessionId(memoryId.toString());
             return memoryCache.computeIfAbsent(sessionId,
-                    id -> new ArchivableChatMemory(id, compressor, dbAppender, dialogueMarkdownService, props, chatLogRepository)
+                    id -> new ArchivableChatMemory(id, compressor, dbAppender, dialogueMarkdownService, props, lockProperties, chatLogRepository)
             );
         };
     }

@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import p1.config.prop.AssistantProperties;
 import p1.model.enums.DialogueMessageRole;
 import p1.repo.markdown.DialogueBatchMarkdownRepository;
 import p1.repo.markdown.RawDialogueMarkdownRepository;
@@ -11,6 +12,7 @@ import p1.repo.markdown.model.DialogueBatchDocument;
 import p1.repo.markdown.model.DialogueBatchMessage;
 import p1.repo.markdown.model.MarkdownDocument;
 import p1.repo.markdown.model.RawDialogueMessageRef;
+import p1.service.lock.SessionLockExecutor;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -21,7 +23,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @RequiredArgsConstructor
@@ -35,13 +36,12 @@ public class DialogueMarkdownService {
     private final DialogueBatchMarkdownRepository dialogueBatchMarkdownRepository;
     private final RawDialogueMarkdownAssembler rawDialogueMarkdownAssembler;
     private final DialogueBatchMarkdownMapper dialogueBatchMarkdownMapper;
-    private final ConcurrentHashMap<String, Object> sessionLocks = new ConcurrentHashMap<>();
+    private final SessionLockExecutor sessionLockExecutor;
 
     /**
-     * 追加一条新的对话消息。
-     * 这里会同时做两件事：
-     * 1. 追加到 raw daily note，作为原始对话记录。
-     * 2. 追加到 collecting.md，作为后续压缩的待处理 backlog。
+     * 追加一条新消息。
+     * 这里必须把 raw daily note 和 collecting backlog 放在同一个 session 锁里，
+     * 否则并发写入时可能出现只写入一边的中间态。
      */
     public RawDialogueMessageRef appendDialogueMessage(String sessionId,
                                                        DialogueMessageRole role,
@@ -55,9 +55,7 @@ public class DialogueMarkdownService {
         LocalDateTime timestamp = createdAt == null ? LocalDateTime.now() : createdAt;
         var date = timestamp.toLocalDate();
 
-        // raw note 追加和 collecting batch 追加必须放在同一个 session 锁里，
-        // 否则并发写入时，可能出现消息只落到其中一边的中间状态。
-        synchronized (lockForSession(sessionId)) {
+        return sessionLockExecutor.execute(sessionId, "appendDialogueMessage", () -> {
             MarkdownDocument rawNote = rawDialogueMarkdownRepository.findDailyNote(sessionId, date)
                     .orElseGet(() -> rawDialogueMarkdownAssembler.createDailyNote(date));
 
@@ -74,26 +72,23 @@ public class DialogueMarkdownService {
             );
 
             // collecting.md 是当前 session 的持久 backlog。
-            // 1 小时内重新接入，继续复用同一个 collecting；
-            // 超过 1 小时则把旧 collecting 封口到 processing，再为新消息开启新的 collecting。
+            // 30 分钟内重连继续复用；超时后如果没有 processing，则把旧 collecting 封口成 processing。
             Optional<DialogueBatchDocument> collectingCandidate = loadCollectingForAppend(sessionId, timestamp);
-            DialogueBatchDocument collecting = collectingCandidate
-                    .orElseGet(() -> {
-                        DialogueBatchDocument newCollecting = new DialogueBatchDocument(
-                                buildBatchId(),
-                                sessionId,
-                                "collecting",
-                                timestamp,
-                                timestamp,
-                                null,
-                                new ArrayList<>()
-                        );
-                        log.info("[对话批次] 新建 collecting，sessionId={}, batchId={}, createdAt={}",
-                                sessionId, newCollecting.id(), timestamp);
-                        return newCollecting;
-                    });
+            DialogueBatchDocument collecting = collectingCandidate.orElseGet(() -> {
+                DialogueBatchDocument newCollecting = new DialogueBatchDocument(
+                        buildBatchId(),
+                        sessionId,
+                        "collecting",
+                        timestamp,
+                        timestamp,
+                        null,
+                        new ArrayList<>()
+                );
+                log.info("[对话批次] sessionId={} 新建 collecting，batchId={}，createdAt={}",
+                        sessionId, newCollecting.id(), timestamp);
+                return newCollecting;
+            });
 
-            // 向collecting的messages列表追加信息
             List<DialogueBatchMessage> messages = new ArrayList<>(collecting.messages());
             messages.add(new DialogueBatchMessage(
                     rawRef.messageId(),
@@ -114,10 +109,10 @@ public class DialogueMarkdownService {
                     messages
             );
             dialogueBatchMarkdownRepository.saveCollecting(sessionId, dialogueBatchMarkdownMapper.toMarkdown(updatedCollecting));
-            log.debug("[对话批次] collecting 已追加消息，sessionId={}, batchId={}, 当前消息数={}",
+            log.debug("[对话批次] sessionId={} collecting 已追加消息，batchId={}，当前消息数={}",
                     sessionId, updatedCollecting.id(), updatedCollecting.messageCount());
             return rawRef;
-        }
+        });
     }
 
     public Optional<DialogueBatchDocument> findProcessing(String sessionId) {
@@ -125,38 +120,36 @@ public class DialogueMarkdownService {
     }
 
     /**
-     * 如果 collecting.md 已经积累到阈值，就从头部切出一段生成 processing.md。
-     * 注意：
-     * - collecting.md 代表“整个待处理队列”
-     * - processing.md 代表“当前这一轮正在压缩的快照”
-     * 这里不会立刻改写 collecting.md，只有压缩成功后才会正式扣除。
+     * 如果 collecting 达到阈值，就切出 processing 快照。
+     * 这里不会立刻改写 collecting，而是等压缩成功后再正式扣除，避免中途失败时丢 backlog。
      */
     public Optional<DialogueBatchDocument> promoteCollectingToProcessingIfReady(String sessionId,
                                                                                 int triggerThreshold,
                                                                                 int compressCount) {
-        synchronized (lockForSession(sessionId)) {
-            // 运行时压缩和启动恢复都会走到这里。
-            // 如果 processing.md 已经存在，就直接复用，避免出现第二个进行中的 batch。
+        return sessionLockExecutor.execute(sessionId, "promoteCollectingToProcessingIfReady", () -> {
+            log.info("[对话批次] 开始处理 sessionId={} 的 processing", sessionId);
+
             Optional<DialogueBatchDocument> existingProcessing = findProcessing(sessionId);
             if (existingProcessing.isPresent()) {
                 DialogueBatchDocument processing = existingProcessing.get();
-                log.info("[对话批次] 已存在 processing，直接复用，sessionId={}, batchId={}, 消息数={}",
+                log.info("[对话批次] sessionId={} 已存在 processing，直接复用，batchId={}，消息数={}",
                         sessionId, processing.id(), processing.messageCount());
                 return existingProcessing;
             }
 
             DialogueBatchDocument collecting = loadCollectingForProcessing(sessionId, LocalDateTime.now()).orElse(null);
             if (collecting == null) {
+                log.info("[对话批次] sessionId={} 未找到可提升的 collecting，尝试从 processing 恢复", sessionId);
                 return findProcessing(sessionId);
             }
             if (collecting.messageCount() < triggerThreshold) {
-                log.debug("[对话批次] collecting 未达到压缩阈值，sessionId={}, batchId={}, 当前消息数={}, 阈值={}",
+                log.info("[对话批次] sessionId={} 的 collecting 尚未达到阈值，batchId={}，当前消息数={}，阈值={}",
                         sessionId, collecting.id(), collecting.messageCount(), triggerThreshold);
                 return Optional.empty();
             }
 
-            // processing.md 只快照当前要压缩的头部片段。
-            // 这里先不修改 collecting.md，等压缩成功后再正式扣除。
+            // processing 只快照当前这一轮要压缩的头部消息。
+            // 真正扣除 collecting，要等 acknowledgeProcessing 成功后再做。
             int processingCount = Math.min(compressCount, collecting.messageCount());
             List<DialogueBatchMessage> processingMessages = new ArrayList<>(collecting.messages().subList(0, processingCount));
             DialogueBatchDocument processing = new DialogueBatchDocument(
@@ -169,32 +162,27 @@ public class DialogueMarkdownService {
                     processingMessages
             );
             dialogueBatchMarkdownRepository.saveProcessing(sessionId, dialogueBatchMarkdownMapper.toMarkdown(processing));
-            log.info("[对话批次] collecting 提升为 processing，sessionId={}, batchId={}, 本次压缩消息数={}, collecting 总消息数={}",
+            log.info("[对话批次] sessionId={} collecting 已转为 processing，batchId={}，本次压缩消息数={}，collecting 总消息数={}",
                     sessionId, processing.id(), processing.messageCount(), collecting.messageCount());
             return Optional.of(processing);
-        }
+        });
     }
 
     /**
-     * 确认 processing.md 对应的这一轮压缩已经成功完成。
-     * 处理方式不是直接删除 collecting.md，而是把 processing.md 中已经处理过的消息
-     * 从 collecting.md 里扣除；扣除完成后，再删除 processing.md。
-     * 这样可以保证：
-     * - 压缩过程中如果崩溃，collecting.md 仍然保留完整 backlog
-     * - 只有真正成功后，待处理队列才会被正式裁剪
+     * 压缩成功后的确认步骤。
+     * 这里是“从 collecting 扣掉已处理消息，再删除 processing”，
+     * 目的是保证崩溃时 backlog 仍然完整可恢复。
      */
     public void acknowledgeProcessing(String sessionId) {
-        synchronized (lockForSession(sessionId)) {
+        sessionLockExecutor.execute(sessionId, "acknowledgeProcessing", () -> {
             DialogueBatchDocument processing = findProcessing(sessionId).orElse(null);
             if (processing == null) {
-                log.debug("[对话批次] acknowledge 跳过，processing 不存在，sessionId={}", sessionId);
+                log.info("[对话批次] sessionId={} acknowledge 跳过，processing 不存在", sessionId);
                 return;
             }
 
             DialogueBatchDocument collecting = loadCollecting(sessionId).orElse(null);
             if (collecting != null) {
-                // 确认成功的方式，是把已处理的 message id 从 collecting.md 中扣掉。
-                // 这样处理期间 collecting 一直保持完整，崩溃恢复时更安全。
                 Set<String> processedIds = new LinkedHashSet<>();
                 processing.messages().forEach(message -> processedIds.add(message.messageId()));
 
@@ -204,7 +192,7 @@ public class DialogueMarkdownService {
 
                 if (remainingMessages.isEmpty()) {
                     dialogueBatchMarkdownRepository.deleteCollecting(sessionId);
-                    log.info("[对话批次] processing 确认完成，collecting 已清空，sessionId={}, batchId={}",
+                    log.info("[对话批次] sessionId={} processing 确认完成，collecting 已清空，batchId={}",
                             sessionId, processing.id());
                 } else {
                     DialogueBatchDocument updatedCollecting = new DialogueBatchDocument(
@@ -217,22 +205,22 @@ public class DialogueMarkdownService {
                             remainingMessages
                     );
                     dialogueBatchMarkdownRepository.saveCollecting(sessionId, dialogueBatchMarkdownMapper.toMarkdown(updatedCollecting));
-                    log.info("[对话批次] processing 确认完成，collecting 已扣除已处理消息，sessionId={}, batchId={}, collecting 剩余消息数={}",
+                    log.info("[对话批次] sessionId={} processing 确认完成，collecting 已扣除已处理消息，batchId={}，剩余消息数={}",
                             sessionId, processing.id(), updatedCollecting.messageCount());
                 }
             } else {
-                log.info("[对话批次] processing 确认完成，本轮为独立 processing，sessionId={}, batchId={}",
+                log.info("[对话批次] sessionId={} processing 确认完成，本轮为独立 processing，batchId={}",
                         sessionId, processing.id());
             }
 
             dialogueBatchMarkdownRepository.deleteProcessing(sessionId);
-            log.info("[对话批次] processing 已删除，sessionId={}, batchId={}", sessionId, processing.id());
-        }
+            log.info("[对话批次] sessionId={} processing 已删除，batchId={}", sessionId, processing.id());
+        });
     }
 
     /**
-     * 返回当前存在 collecting.md 或 processing.md 的 session。
-     * 启动恢复时会用它来定位哪些 session 还有未完成任务。
+     * 返回当前仍然存在 collecting 或 processing 的 session。
+     * 启动恢复时用它来确定还有哪些 session 存在未完成任务。
      */
     public Set<String> listSessionIdsWithOpenBatches() {
         return dialogueBatchMarkdownRepository.listSessionIdsWithOpenBatches();
@@ -243,13 +231,9 @@ public class DialogueMarkdownService {
     }
 
     /**
-     * 读取“当前仍然可继续追加”的 collecting。
-     * 规则：
-     * - 如果最后活跃时间在 1 小时内，继续视为同一个 collecting
-     * - 如果已经超过 1 小时，且当前没有 processing，则把旧 collecting 整体封口到 processing
-     *   然后返回空，让调用方为新消息创建一个新的 collecting
-     * - 如果已经有 processing 在执行中，为了避免覆盖 backlog，暂时保留原 collecting，
-     *   也就是“超时直接转 processing”只会发生在当前没有 processing.md 的前提下
+     * 读取“当前仍可继续追加”的 collecting。
+     * 超时且没有 processing 时，会把旧 collecting 整体封口为 processing；
+     * 超时但已有 processing 时，暂时保留 collecting，避免 backlog 被覆盖。
      */
     private Optional<DialogueBatchDocument> loadCollectingForAppend(String sessionId, LocalDateTime referenceTime) {
         DialogueBatchDocument collecting = loadCollecting(sessionId).orElse(null);
@@ -257,12 +241,12 @@ public class DialogueMarkdownService {
             return Optional.empty();
         }
         if (!isCollectingExpired(collecting, referenceTime)) {
-            log.debug("[对话批次] 复用 collecting，sessionId={}, batchId={}, 最近活跃时间={}",
+            log.debug("[对话批次] 复用 collecting，sessionId={}，batchId={}，lastActiveAt={}",
                     sessionId, collecting.id(), collecting.updatedAt() != null ? collecting.updatedAt() : collecting.createdAt());
             return Optional.of(collecting);
         }
         if (findProcessing(sessionId).isPresent()) {
-            log.info("[对话批次] collecting 已超时，但已有 processing 在执行，暂不封口 collecting，sessionId={}, batchId={}",
+            log.info("[对话批次] collecting 已超时，但已有 processing 在执行，暂不封口 collecting，sessionId={}，batchId={}",
                     sessionId, collecting.id());
             return Optional.of(collecting);
         }
@@ -273,9 +257,8 @@ public class DialogueMarkdownService {
 
     /**
      * 读取“当前可进入压缩判断”的 collecting。
-     * 如果 collecting 已经过了 1 小时空窗，就不再走阈值判断，而是直接整批封口到 processing。
-     * 同样地，这个动作也要求当前没有 processing.md；如果已经有 processing 在执行，
-     * 就优先让那一批先完成，避免一个 session 同时出现两个 processing。
+     * collecting 超时且当前没有 processing 时，会直接整体转为 processing；
+     * 如果已经有 processing，在它完成前不再创建第二个 processing。
      */
     private Optional<DialogueBatchDocument> loadCollectingForProcessing(String sessionId, LocalDateTime referenceTime) {
         DialogueBatchDocument collecting = loadCollecting(sessionId).orElse(null);
@@ -286,7 +269,7 @@ public class DialogueMarkdownService {
             return Optional.of(collecting);
         }
         if (findProcessing(sessionId).isPresent()) {
-            log.info("[对话批次] collecting 已超时，但已有 processing 在执行，等待当前 processing 完成后再处理 collecting，sessionId={}, batchId={}",
+            log.info("[对话批次] collecting 已超时，但已有 processing 在执行，等待当前 processing 完成后再处理 collecting，sessionId={}，batchId={}",
                     sessionId, collecting.id());
             return Optional.empty();
         }
@@ -296,9 +279,8 @@ public class DialogueMarkdownService {
     }
 
     /**
-     * 把一个超时的 collecting 整体封口成 processing。
-     * 这里会直接删除原 collecting，因为它的整批内容已经完整移交给 processing。
-     * 后续如果压缩成功，acknowledge 时只需要删除 processing 即可。
+     * 把一个超时 collecting 整体封口成 processing。
+     * 因为它的整批内容已经完整移交给 processing，所以这里会直接删除原 collecting。
      */
     private void sealCollectingToProcessing(String sessionId,
                                             DialogueBatchDocument collecting,
@@ -315,7 +297,7 @@ public class DialogueMarkdownService {
         );
         dialogueBatchMarkdownRepository.saveProcessing(sessionId, dialogueBatchMarkdownMapper.toMarkdown(processing));
         dialogueBatchMarkdownRepository.deleteCollecting(sessionId);
-        log.info("[对话批次] collecting 已整体封口为 processing，sessionId={}, batchId={}, 消息数={}, 原因={}",
+        log.info("[对话批次] collecting 已转为 processing，sessionId={}，batchId={}，消息数={}，reason={}",
                 sessionId, processing.id(), processing.messageCount(), reason);
     }
 
@@ -325,11 +307,6 @@ public class DialogueMarkdownService {
             return false;
         }
         return lastActiveAt.plus(COLLECTING_REOPEN_WINDOW).isBefore(referenceTime);
-    }
-
-    private Object lockForSession(String sessionId) {
-        // 进程内按 session 串行化文件写入。
-        return sessionLocks.computeIfAbsent(sessionId, ignored -> new Object());
     }
 
     private String buildMessageId() {

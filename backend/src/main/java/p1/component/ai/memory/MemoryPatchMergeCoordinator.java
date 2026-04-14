@@ -18,6 +18,7 @@ import p1.utils.SessionUtil;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -292,15 +293,14 @@ public class MemoryPatchMergeCoordinator {
 
     private String buildPatchText(List<MemoryPatchDocument> patches) {
         return patches.stream()
+                .filter(patch -> patch.getCreatedAt() != null)
+                .sorted(Comparator.comparing(MemoryPatchDocument::getCreatedAt))
                 .map(patch -> {
                     String correction = normalize(patch.getCorrectionContent());
                     if (correction.isBlank()) {
                         return null;
                     }
-
-                    String createdAt = patch.getCreatedAt() == null
-                            ? "未知时间"
-                            : patch.getCreatedAt().format(PATCH_TIME_FORMATTER);
+                    String createdAt = patch.getCreatedAt().format(PATCH_TIME_FORMATTER);
                     return "- [" + createdAt + "] " + correction;
                 })
                 .filter(text -> text != null && !text.isBlank())

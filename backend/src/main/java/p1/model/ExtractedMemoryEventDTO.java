@@ -17,9 +17,6 @@ public class ExtractedMemoryEventDTO {
     @Description("用于向量检索的高密度特征摘要（2-3句）。必须保留关键实体、时间、地点或专属名词等检索锚点。")
     private String keywordSummary;
 
-    @Description("判断此事件是否是对【引用记忆列表】中某个已有话题的补充或纠正。新话题=false，更新旧话题=true。")
-    private boolean isUpdateToOldTopic;
-
     @Description("""
             重要性评估 (1-10分)，只有大于五分的事件才会被存入记忆中，你必须慎重的评估重要的事件，绝对不能随意的把无关紧要的事件给出高分！
             用户输出的内容比LLM的更有价值。如果存在用户胡言乱语，或者两人之间没有形成有效对话，那么就给1分。
@@ -32,7 +29,4 @@ public class ExtractedMemoryEventDTO {
             8分: 深刻的个人经历、核心价值观或重要家庭信息
             """)
     private int importanceScore;
-
-    @Description("关联匹配：如果 isUpdateToOldTopic 为 true，则填入匹配引用的纯数字ID。如果为 false（全新记忆），必须严格填入 -1。")
-    private Long matchedTargetId;
 }

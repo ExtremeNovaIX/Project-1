@@ -17,6 +17,9 @@ import org.springframework.boot.ansi.AnsiStyle;
 import org.springframework.stereotype.Component;
 import p1.mdc.ChatSessionMetrics;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 import static p1.utils.SessionUtil.normalizeSessionId;
 
 @Component
@@ -25,6 +28,7 @@ import static p1.utils.SessionUtil.normalizeSessionId;
 public class AssistantLoggingListener implements ChatModelListener {
 
     private final ChatSessionMetrics chatSessionMetrics;
+    private final Map<String, String> pendingInputs = new ConcurrentHashMap<>();
 
     @Override
     public void onResponse(ChatModelResponseContext context) {
@@ -32,27 +36,36 @@ public class AssistantLoggingListener implements ChatModelListener {
         ChatRequest request = context.chatRequest();
         TokenUsage usage = response.tokenUsage();
 
-        String id = normalizeSessionId(MDC.get("sessionId"));
-        int currentRound = resolveCurrentRound(id);
-        ChatSessionMetrics.TokenSnapshot tokenTotals = chatSessionMetrics.addAndGetTokenTotals(id, usage);
+        String sessionId = normalizeSessionId(MDC.get("sessionId"));
+        int currentRound = resolveCurrentRound(sessionId);
+        String cacheKey = buildCacheKey(sessionId, currentRound);
 
-        String aiOutput = response.aiMessage().text() == null ? "N/A" : response.aiMessage().text();
+        String currentInput = extractUserInput(request);
+        if (!currentInput.isBlank()) {
+            pendingInputs.put(cacheKey, currentInput);
+        }
+
+        String aiOutput = response.aiMessage().text();
+        if (aiOutput == null || aiOutput.isBlank()) {
+            return;
+        }
+
+        String input = currentInput.isBlank() ? pendingInputs.remove(cacheKey) : pendingInputs.remove(cacheKey);
+        if (input == null || input.isBlank()) {
+            input = "N/A";
+        }
+
+        ChatSessionMetrics.TokenSnapshot tokenTotals = chatSessionMetrics.addAndGetTokenTotals(sessionId, usage);
         long inputTokens = usage == null ? 0L : usage.inputTokenCount();
         long outputTokens = usage == null ? 0L : usage.outputTokenCount();
         long totalTokens = usage == null ? 0L : usage.totalTokenCount();
 
-        String input = "N/A";
-        if (!request.messages().isEmpty()) {
-            ChatMessage lastMsg = request.messages().getLast();
-            if (lastMsg instanceof UserMessage userMsg) {
-                input = userMsg.singleText();
-            }
-        }
-
         StringBuilder sb = new StringBuilder();
         sb.append("\n")
-                .append(AnsiOutput.toString(AnsiColor.BRIGHT_CYAN, AnsiStyle.BOLD, ">>> [前端AI交互流程]", AnsiStyle.NORMAL)).append("\n")
-                .append(AnsiOutput.toString(AnsiColor.WHITE, "[SessionId]: ", AnsiColor.DEFAULT, id)).append("\n")
+                .append(AnsiOutput.toString(AnsiColor.BRIGHT_CYAN, AnsiStyle.BOLD,
+                        ">>> [前端AI交互流程]=================================================================", AnsiStyle.NORMAL))
+                .append("\n")
+                .append(AnsiOutput.toString(AnsiColor.WHITE, "[SessionId]: ", AnsiColor.DEFAULT, sessionId)).append("\n")
                 .append(AnsiOutput.toString(AnsiColor.WHITE, "[当前对话轮数]: ", AnsiColor.DEFAULT, currentRound)).append("\n")
                 .append(AnsiOutput.toString(AnsiColor.CYAN, "[请求]: " + input)).append("\n")
                 .append(AnsiOutput.toString(AnsiColor.BRIGHT_WHITE, "[输出]: " + aiOutput.trim())).append("\n")
@@ -62,13 +75,33 @@ public class AssistantLoggingListener implements ChatModelListener {
                 .append(AnsiOutput.toString(AnsiColor.WHITE, "[Session Tokens]: ",
                         AnsiColor.BRIGHT_YELLOW, "[I:", tokenTotals.input(), " O:", tokenTotals.output(), " T:", tokenTotals.total(), "]",
                         AnsiColor.DEFAULT)).append("\n")
-                .append(AnsiOutput.toString(AnsiColor.BRIGHT_CYAN, "=================================================================================================="));
+                .append(AnsiOutput.toString(AnsiColor.BRIGHT_CYAN,
+                        "=================================================================================================="));
         log.info(sb.toString());
     }
 
     @Override
     public void onError(ChatModelErrorContext context) {
         log.error("调用失败 | Error: {}", context.error().toString());
+    }
+
+    private String extractUserInput(ChatRequest request) {
+        if (request == null || request.messages().isEmpty()) {
+            return "";
+        }
+
+        for (int i = request.messages().size() - 1; i >= 0; i--) {
+            ChatMessage message = request.messages().get(i);
+            if (message instanceof UserMessage userMessage) {
+                String[] parts = userMessage.singleText().split("user:");
+                return parts[parts.length - 1].trim();
+            }
+        }
+        return "";
+    }
+
+    private String buildCacheKey(String sessionId, int currentRound) {
+        return sessionId + "#" + currentRound;
     }
 
     private int resolveCurrentRound(String sessionId) {

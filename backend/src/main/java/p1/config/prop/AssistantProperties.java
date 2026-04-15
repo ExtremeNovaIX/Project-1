@@ -14,6 +14,8 @@ public class AssistantProperties {
     private EmbeddingStoreConfig embeddingStore;
     private MdRepositoryConfig mdRepository;
     private ChatMemoryConfig chatMemory;
+    private TestAiConfig testAi = new TestAiConfig();
+    private TestChatConfig testChat = new TestChatConfig();
 
     public ChatModelConfig activeChatModel() {
         return activeProvider().getChatModel();
@@ -63,7 +65,7 @@ public class AssistantProperties {
 
     @Data
     public static class EmbeddingModelConfig {
-        private String apiKey;  
+        private String apiKey;
         private String baseUrl;
         private String modelName;
     }
@@ -76,5 +78,15 @@ public class AssistantProperties {
     @Data
     public static class MdRepositoryConfig {
         private String path = "data/memory";
+    }
+
+    @Data
+    public static class TestChatConfig {
+        private String selfSummaryPath = "data/test-chat";
+    }
+
+    @Data
+    public static class TestAiConfig {
+        private ChatModelConfig chatModel = new ChatModelConfig();
     }
 }

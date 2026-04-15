@@ -119,6 +119,12 @@ public class DialogueMarkdownService {
         return dialogueBatchMarkdownRepository.findProcessing(sessionId).map(dialogueBatchMarkdownMapper::fromMarkdown);
     }
 
+    public int getCollectingMessageCount(String sessionId) {
+        return sessionLockExecutor.execute(sessionId, "getCollectingMessageCount", () ->
+                loadCollecting(sessionId).map(DialogueBatchDocument::messageCount).orElse(0)
+        );
+    }
+
     /**
      * 如果 collecting 达到阈值，就切出 processing 快照。
      * 这里不会立刻改写 collecting，而是等压缩成功后再正式扣除，避免中途失败时丢 backlog。

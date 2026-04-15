@@ -8,7 +8,7 @@ import p1.mdc.ChatSessionMetrics;
 import p1.model.ChatRequestDTO;
 import p1.model.TestChatResponseDTO;
 import p1.service.ChatService;
-import p1.service.ChatTestService;
+import p1.service.TestChatService;
 
 import java.util.Arrays;
 import java.util.List;
@@ -23,7 +23,7 @@ import static p1.utils.SessionUtil.normalizeSessionId;
 public class ChatController {
 
     private final ChatService chatService;
-    private final ChatTestService chatTestService;
+    private final TestChatService testChatService;
     private final ChatSessionMetrics chatSessionMetrics;
 
     @PostMapping("/send")
@@ -57,6 +57,6 @@ public class ChatController {
 
     @GetMapping("/test")
     public TestChatResponseDTO test(@RequestParam Integer rounds) {
-        return chatTestService.runTestChat(rounds);
+        return testChatService.runTestChat(rounds);
     }
 }

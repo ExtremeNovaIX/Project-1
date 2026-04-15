@@ -11,16 +11,14 @@ import p1.config.prop.AssistantProperties;
 import p1.config.prop.LockProperties;
 import p1.model.ChatLogEntity;
 import p1.repo.db.ChatLogRepository;
+import p1.repo.markdown.model.DialogueBatchMessage;
 import p1.service.markdown.DialogueMarkdownService;
 import p1.utils.ChatMessageUtil;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -39,7 +37,6 @@ public class ArchivableChatMemory implements ChatMemory {
     private final int triggerThreshold;
     private final int compressCount;
     private final Duration compressionLeaseTimeout;
-    private final Set<String> referenceBuffer = ConcurrentHashMap.newKeySet();
 
     public ArchivableChatMemory(String sessionId,
                                 MemoryCompressor compressor,
@@ -94,7 +91,15 @@ public class ArchivableChatMemory implements ChatMemory {
     }
 
     private void compressMemory(boolean isFinalTurnMessage) {
-        if (!isFinalTurnMessage || messages.size() < triggerThreshold) {
+        if (!isFinalTurnMessage) {
+            return;
+        }
+
+        int windowCount = messages.size();
+        int collectingCount = dialogueMarkdownService.getCollectingMessageCount(sessionId);
+        if (collectingCount < triggerThreshold) {
+            log.debug("[记忆压缩] collecting 尚未达到阈值，暂不触发压缩，sessionId={}，windowCount={}，collectingCount={}，threshold={}",
+                    sessionId, windowCount, collectingCount, triggerThreshold);
             return;
         }
 
@@ -103,11 +108,8 @@ public class ArchivableChatMemory implements ChatMemory {
             return;
         }
 
-        log.info("[记忆压缩触发] 当前消息数达到阈值 {}，准备压缩，sessionId={}，leaseId={}",
-                triggerThreshold, sessionId, lease.leaseId());
-
-        List<ChatMessage> toCompress = new ArrayList<>(messages.subList(0, compressCount));
-        List<String> references = new ArrayList<>(referenceBuffer);
+        log.info("[记忆压缩触发] collecting 已达到阈值，准备压缩，sessionId={}，leaseId={}，windowCount={}，collectingCount={}，threshold={}",
+                sessionId, lease.leaseId(), windowCount, collectingCount, triggerThreshold);
 
         ChatMessageAppender.DialogueBatch processingBatch;
         try {
@@ -123,13 +125,17 @@ public class ArchivableChatMemory implements ChatMemory {
         }
 
         if (processingBatch == null) {
-            log.warn("[记忆压缩] 没有可处理的 processing 批次，释放租约，sessionId={}，leaseId={}",
-                    sessionId, lease.leaseId());
+            log.warn("[记忆压缩] 没有可处理的 processing 批次，释放租约，sessionId={}，leaseId={}，windowCount={}，collectingCount={}",
+                    sessionId, lease.leaseId(), windowCount, collectingCount);
             releaseCompressionLease(lease, "没有 processing 批次");
             return;
         }
 
-        compressor.compressAsync(sessionId, toCompress, references, () -> onCompressionSuccess(lease, toCompress), () -> {
+        List<ChatMessage> toCompress = processingBatch.messages().stream()
+                .map(DialogueBatchMessage::toChatMessage)
+                .toList();
+
+        compressor.compressAsync(sessionId, toCompress, () -> onCompressionSuccess(lease, processingBatch), () -> {
             if (isLeaseCurrent(lease)) {
                 log.warn("[记忆压缩失败] 后台压缩失败，释放租约，sessionId={}，batchId={}，leaseId={}",
                         sessionId, processingBatch.batchId(), lease.leaseId());
@@ -141,7 +147,7 @@ public class ArchivableChatMemory implements ChatMemory {
         });
     }
 
-    private void onCompressionSuccess(CompressionLease lease, List<ChatMessage> toCompress) {
+    private void onCompressionSuccess(CompressionLease lease, ChatMessageAppender.DialogueBatch processingBatch) {
         if (!isLeaseCurrent(lease)) {
             log.warn("[记忆压缩] 收到过期成功回调，忽略后续收尾，sessionId={}，leaseId={}", sessionId, lease.leaseId());
             return;
@@ -149,21 +155,38 @@ public class ArchivableChatMemory implements ChatMemory {
 
         try {
             dialogueMarkdownService.acknowledgeProcessing(sessionId);
-
-            for (int i = 0; i < toCompress.size(); i++) {
-                if (!messages.isEmpty()) {
-                    messages.removeFirst();
-                }
-            }
-            referenceBuffer.clear();
-            log.info("[记忆压缩完成] 当前内存窗口剩余 {} 条消息，压缩 {} 条消息，sessionId={}，leaseId={}",
-                    messages.size(), toCompress.size(), sessionId, lease.leaseId());
+            int removedCount = removeProcessedMessagesFromWindow(processingBatch);
+            log.info("[记忆压缩完成] 当前内存窗口剩余 {} 条消息，已扣减 {} 条已持久化消息，sessionId={}，batchId={}，leaseId={}",
+                    messages.size(), removedCount, sessionId, processingBatch.batchId(), lease.leaseId());
         } catch (Exception e) {
             log.error("[记忆压缩失败] 压缩成功后的确认阶段异常，sessionId={}，leaseId={}",
                     sessionId, lease.leaseId(), e);
         } finally {
             releaseCompressionLease(lease, "压缩流程结束");
         }
+    }
+
+    private int removeProcessedMessagesFromWindow(ChatMessageAppender.DialogueBatch processingBatch) {
+        int targetCount = processingBatch.messages().size();
+        int removedCount = 0;
+
+        for (int i = 0; i < messages.size() && removedCount < targetCount; ) {
+            ChatMessage message = messages.get(i);
+            boolean isPersistedMessage = message instanceof UserMessage
+                    || (message instanceof AiMessage aiMessage && ChatMessageUtil.isAiFinalResponseMessage(aiMessage));
+            if (isPersistedMessage) {
+                messages.remove(i);
+                removedCount++;
+                continue;
+            }
+            i++;
+        }
+
+        if (removedCount < targetCount) {
+            log.warn("[记忆压缩] 内存窗口扣减数量少于 processing 批次消息数，sessionId={}，batchId={}，expected={}，actual={}",
+                    sessionId, processingBatch.batchId(), targetCount, removedCount);
+        }
+        return removedCount;
     }
 
     private CompressionLease tryAcquireCompressionLease() {
@@ -182,7 +205,7 @@ public class ArchivableChatMemory implements ChatMemory {
 
         CompressionLease replacement = new CompressionLease(UUID.randomUUID().toString(), now);
         if (activeCompression.compareAndSet(current, replacement)) {
-            log.warn("[记忆压缩] sessionId={} 当前锁因为超时而被移除。oldLeaseId={}，newLeaseId={}，startedAt={}，timeoutMs={}",
+            log.warn("[记忆压缩] sessionId={} 当前租约已超时，执行接管。oldLeaseId={}，newLeaseId={}，startedAt={}，timeoutMs={}",
                     sessionId,
                     current.leaseId(),
                     replacement.leaseId(),
@@ -217,11 +240,7 @@ public class ArchivableChatMemory implements ChatMemory {
         for (int i = messages.size() - 1; i >= 0; i--) {
             ChatMessage message = messages.get(i);
 
-            if (message instanceof ToolExecutionResultMessage toolMessage) {
-                if (toolMessage.text() != null && toolMessage.text().contains("[记忆ID:")) {
-                    referenceBuffer.add(toolMessage.text());
-                    log.debug("[上下文清理] 捕获带记忆 ID 的工具结果：{}", toolMessage.text());
-                }
+            if (message instanceof ToolExecutionResultMessage) {
                 messages.remove(i);
             } else if (message instanceof AiMessage aiMessage && aiMessage.hasToolExecutionRequests()) {
                 messages.remove(i);

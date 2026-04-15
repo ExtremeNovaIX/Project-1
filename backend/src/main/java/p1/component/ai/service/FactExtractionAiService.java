@@ -23,7 +23,6 @@ public interface FactExtractionAiService {
             - **微小说式叙事 (Crucial)**：在记录互动过程时，严禁使用“用户与我调情了”这类干瘪的总结，也拒绝记流水账。你必须像写“剧本梗概”一样：
               1) 提炼互动的起因与转折点；
               2) 保留关键的对话细节或“名场面”（如某个绝妙的比喻、特定的称呼）；
-              3) 明确标注当时的【情感基调】（如暧昧、轻松、感动、严肃）。
 
             ## 2. 增量与状态判定 (Matching & State)
             对提取出的每个事件，与【引用记忆列表】进行交叉比对：
@@ -35,17 +34,14 @@ public interface FactExtractionAiService {
             - **向量摘要 (keywordSummary)**：2-3句的高密度特征摘要，保留实体、话题及明显的情感标签，用于向量化检索。
             - **全局总结 (summary)**：使用第三人称视角，用 3-4 句话概括对话脉络。必须包含本次对话的【氛围基调】与【双方关系进展】。
             - **绝对事实**：禁止编造对话中未发生的情节或未表达的情感；禁止臆造引用ID。
+            - **输出格式**：必须必须输出非常标准的 JSON 格式！特殊字符或者不符合规范的格式会导致系统极端崩溃！
             """)
     @UserMessage("""
-            【引用记忆列表】
-            {{references}}
-            
             【对话历史】
             {{chatContext}}
             """)
     FactExtractionResponse extractAndMatchFacts(
-            @V("chatContext") List<ChatMessage> chatContext,
-            @V("references") String references
+            @V("chatContext") List<ChatMessage> chatContext
     );
 
     @Data

@@ -266,8 +266,7 @@ public class MemoryPatchMergeCoordinator {
 
         try {
             FactExtractionAiService.FactExtractionResponse response = factExtractionAiService.extractAndMatchFacts(
-                    List.of(UserMessage.from(patchContent)),
-                    "无引用记忆"
+                    List.of(UserMessage.from(patchContent))
             );
 
             List<ExtractedMemoryEventDTO> events = response.getEvents();

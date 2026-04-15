@@ -35,12 +35,20 @@ assistant:
   local:
     chat-model:
       base-url: http://127.0.0.1:1234/v1
-      model-name: gemma-4-e4b-rp
+      model-name: gemma-4-a4b@q4_k_s
       timeout-seconds: 120
       log-enabled: false
     embedding-model:
       base-url: http://127.0.0.1:1234/v1
       model-name: text-embedding-embedding
+
+  test-ai:
+    chat-model:
+      api-key: ${DEEPSEEK_API_KEY:default_value}
+      base-url: https://api.deepseek.com
+      model-name: deepseek-chat
+      timeout-seconds: 120
+      log-enabled: false
 
   chat-memory:
     max-messages: 80

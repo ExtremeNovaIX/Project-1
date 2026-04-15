@@ -72,8 +72,8 @@ public class AiConfig {
 
     @Bean(name = "testChatModel")
     public ChatModel testChatModel() {
-        AssistantProperties.ChatModelConfig chatModelConfig = props.activeChatModel();
-        return buildChatModel(chatModelConfig, null, null);
+        AssistantProperties.ChatModelConfig chatModelConfig = props.getTestAi().getChatModel();
+        return buildChatModel(chatModelConfig, null, 1.0);
     }
 
     @Bean
@@ -88,28 +88,28 @@ public class AiConfig {
     }
 
     @Bean
-    public TestAssistant testAssistant(@Qualifier("localChatModel") ChatModel chatModel) {
+    public TestAssistant testAssistant(@Qualifier("testChatModel") ChatModel chatModel) {
         return AiServices.builder(TestAssistant.class)
                 .chatModel(chatModel)
                 .build();
     }
 
     @Bean
-    public FactExtractionAiService factExtractionAiService(@Qualifier("localChatModel") ChatModel backendChatModel) {
+    public FactExtractionAiService factExtractionAiService(@Qualifier("backendChatModel") ChatModel backendChatModel) {
         return AiServices.builder(FactExtractionAiService.class)
                 .chatModel(backendChatModel)
                 .build();
     }
 
     @Bean
-    public MemoryLogicJudgeAiService memoryLogicJudgeAiService(@Qualifier("localChatModel") ChatModel backendChatModel) {
+    public MemoryLogicJudgeAiService memoryLogicJudgeAiService(@Qualifier("backendChatModel") ChatModel backendChatModel) {
         return AiServices.builder(MemoryLogicJudgeAiService.class)
                 .chatModel(backendChatModel)
                 .build();
     }
 
     @Bean
-    public MemoryPatchMergeAiService memoryPatchMergeAiService(@Qualifier("localChatModel") ChatModel backendChatModel) {
+    public MemoryPatchMergeAiService memoryPatchMergeAiService(@Qualifier("backendChatModel") ChatModel backendChatModel) {
         return AiServices.builder(MemoryPatchMergeAiService.class)
                 .chatModel(backendChatModel)
                 .build();
@@ -157,12 +157,16 @@ public class AiConfig {
         return args -> {
             AssistantProperties.ChatModelConfig chatModel = props.activeChatModel();
             AssistantProperties.EmbeddingModelConfig embeddingModel = props.activeEmbeddingModel();
+            AssistantProperties.ChatModelConfig testChatModel = props.getTestAi().getChatModel();
             log.info("AI mode: {} | chat-model: {} @ {} | embedding-model: {} @ {}",
                     props.getMode(),
                     chatModel.getModelName(),
                     chatModel.getBaseUrl(),
                     embeddingModel.getModelName(),
                     embeddingModel.getBaseUrl());
+            log.info("Test AI model: {} @ {}",
+                    testChatModel.getModelName(),
+                    testChatModel.getBaseUrl());
         };
     }
 

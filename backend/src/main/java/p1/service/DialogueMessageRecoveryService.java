@@ -77,7 +77,7 @@ public class DialogueMessageRecoveryService {
         log.info("[对话恢复] sessionId={}, batchId={}, 待恢复消息数={}",
                 batch.sessionId(), batch.batchId(), chatMessages.size());
 
-        memoryCompressor.compressAsync(batch.sessionId(), chatMessages, List.of(), () -> {
+        memoryCompressor.compressAsync(batch.sessionId(), chatMessages, () -> {
             dialogueMarkdownService.acknowledgeProcessing(batch.sessionId());
             dialogueMarkdownService
                     .promoteCollectingToProcessingIfReady(

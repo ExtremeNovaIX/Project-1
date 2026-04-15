@@ -1,6 +1,5 @@
 package p1.component.ai.memory;
 
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import lombok.RequiredArgsConstructor;
@@ -20,40 +19,33 @@ import static p1.utils.ChatMessageUtil.isAiFinalResponseMessage;
 @Slf4j
 @RequiredArgsConstructor
 public class MemoryCompressor {
-    private final SummaryCacheManager summaryCacheManager;
 
+    private final SummaryCacheManager summaryCacheManager;
     private final FactExtractionAiService factExtractorAiService;
     private final MemoryLogicJudgeAiService logicJudgeAiService;
     private final MemorySimilarityRouter similarityRouter;
-
     private final MemoryWriteService memoryStorage;
 
     @Async("asyncTaskExecutor")
     public void compressAsync(String sessionId,
                               List<ChatMessage> toCompress,
-                              List<String> references,
                               Runnable onSuccess,
                               Runnable onFailure) {
         log.info("[记忆压缩] 开始异步压缩，sessionId={}，消息数={}", sessionId, toCompress.size());
         try {
-            String referenceStr = (references == null || references.isEmpty()) ? "无引用记忆" : String.join("\n", references);
-
-            // 提取事件并打分
             List<ChatMessage> pureChatHistory = toCompress.stream()
-                    .filter(msg -> msg instanceof UserMessage
-                            || isAiFinalResponseMessage(msg))
+                    .filter(msg -> msg instanceof UserMessage || isAiFinalResponseMessage(msg))
                     .toList();
 
             FactExtractionAiService.FactExtractionResponse response =
-                    factExtractorAiService.extractAndMatchFacts(pureChatHistory, referenceStr);
-            List<ExtractedMemoryEventDTO> events = response.getEvents();
+                    factExtractorAiService.extractAndMatchFacts(pureChatHistory);
+            List<ExtractedMemoryEventDTO> events = response.getEvents() == null ? List.of() : response.getEvents();
             log.info("[记忆压缩] 提取到 {} 个事件，sessionId={}", events.size(), sessionId);
 
             for (ExtractedMemoryEventDTO event : events) {
                 processMemoryEvent(sessionId, event);
             }
 
-            // 此处的摘要不存库，仅提供上下文
             summaryCacheManager.updateSummary(sessionId, response.getSummary());
             if (onSuccess != null) {
                 onSuccess.run();

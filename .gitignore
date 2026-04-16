@@ -5,3 +5,4 @@ backend/data/assistant_db.trace.db
 /frontend/arklight-frontend/chara/test
 /chara/test
 /.idea
+.idea/workspace.xml

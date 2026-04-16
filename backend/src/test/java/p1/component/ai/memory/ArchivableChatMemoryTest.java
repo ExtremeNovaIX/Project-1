@@ -52,18 +52,19 @@ class ArchivableChatMemoryTest {
         );
         when(dialogueMarkdownService.promoteCollectingToProcessingIfReady(anyString(), anyInt(), anyInt()))
                 .thenReturn(Optional.of(batch));
+        when(dialogueMarkdownService.getCollectingMessageCount(anyString())).thenReturn(2);
 
         AtomicInteger callCounter = new AtomicInteger();
         doAnswer(invocation -> {
-            Runnable onSuccess = invocation.getArgument(3);
-            Runnable onFailure = invocation.getArgument(4);
+            Runnable onSuccess = invocation.getArgument(2);
+            Runnable onFailure = invocation.getArgument(3);
             if (callCounter.incrementAndGet() == 1) {
                 onFailure.run();
             } else {
                 onSuccess.run();
             }
             return null;
-        }).when(compressor).compressAsync(anyString(), anyList(), anyList(), any(), any());
+        }).when(compressor).compressAsync(anyString(), anyList(), any(), any());
 
         ArchivableChatMemory chatMemory = new ArchivableChatMemory(
                 "default",
@@ -80,7 +81,7 @@ class ArchivableChatMemoryTest {
         chatMemory.add(UserMessage.from("第二轮用户消息"));
         chatMemory.add(AiMessage.from("第二轮 AI 回复"));
 
-        verify(compressor, times(2)).compressAsync(anyString(), anyList(), anyList(), any(), any());
+        verify(compressor, times(2)).compressAsync(anyString(), anyList(), any(), any());
         verify(dialogueMarkdownService, times(1)).acknowledgeProcessing("default");
     }
 }

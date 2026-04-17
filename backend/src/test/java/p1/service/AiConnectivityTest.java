@@ -9,6 +9,7 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import p1.config.prop.AssistantProperties;
+import p1.infrastructure.vector.MemoryVectorLibrary;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -34,7 +35,7 @@ class AiConnectivityTest {
         String probeText = "embedding connectivity probe";
 
         Embedding embedding = embeddingModel.embed(probeText).content();
-        EmbeddingSearchResult<?> result = embeddingService.searchEmbedding(probeText, 1, 0.0);
+        EmbeddingSearchResult<?> result = embeddingService.searchEmbedding("default", MemoryVectorLibrary.ARCHIVE, probeText, 1, 0.0);
 
         assertNotNull(embedding, "Embedding endpoint returned null content");
         assertNotNull(embedding.vector(), "Embedding vector is null");

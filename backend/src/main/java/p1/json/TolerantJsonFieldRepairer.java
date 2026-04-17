@@ -1,6 +1,5 @@
 package p1.json;
 
-import com.fasterxml.jackson.databind.BeanDescription;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,15 +9,32 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 
 import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 public class TolerantJsonFieldRepairer {
+
+    private static final Map<String, String> FIELD_ALIASES = Map.ofEntries(
+            Map.entry("events", "events"),
+            Map.entry("groups", "groups"),
+            Map.entry("details", "events"),
+            Map.entry("items", "events"),
+            Map.entry("eventname", "topic"),
+            Map.entry("title", "topic"),
+            Map.entry("description", "narrative"),
+            Map.entry("content", "narrative"),
+            Map.entry("keywordsummary", "keywordSummary"),
+            Map.entry("keywords", "keywordSummary"),
+            Map.entry("tag", "tags"),
+            Map.entry("labels", "tags"),
+            Map.entry("reason", "scoreReason"),
+            Map.entry("reasoning", "scoreReason"),
+            Map.entry("analysis", "scoreReason"),
+            Map.entry("explanation", "scoreReason"),
+            Map.entry("rationale", "scoreReason"),
+            Map.entry("scorereason", "scoreReason"),
+            Map.entry("summarytext", "summary"),
+            Map.entry("importancescore", "importanceScore")
+    );
 
     private final ObjectMapper objectMapper;
 
@@ -39,6 +55,9 @@ public class TolerantJsonFieldRepairer {
         if (root == null || root.isNull() || targetType == null) {
             return root;
         }
+        if (targetType.isMapLikeType() && root.isObject()) {
+            return repairMap((ObjectNode) root, targetType, path, changes);
+        }
         if (root.isArray()) {
             return repairArray((ArrayNode) root, targetType, path, changes);
         }
@@ -56,6 +75,18 @@ public class TolerantJsonFieldRepairer {
             repaired.add(repairNode(item, contentType, path + "[" + index + "]", changes));
             index++;
         }
+        return repaired;
+    }
+
+    /**
+     * Map 的 key 在当前场景里是类别名或标签名，不参与字段修复。
+     */
+    private JsonNode repairMap(ObjectNode objectNode, JavaType targetType, String path, List<RepairChange> changes) {
+        JavaType valueType = targetType.hasContentType() ? targetType.getContentType() : TypeFactory.unknownType();
+        ObjectNode repaired = JsonNodeFactory.instance.objectNode();
+        objectNode.fields().forEachRemaining(entry ->
+                repaired.set(entry.getKey(), repairNode(entry.getValue(), valueType, path + "." + entry.getKey(), changes))
+        );
         return repaired;
     }
 
@@ -128,6 +159,11 @@ public class TolerantJsonFieldRepairer {
         String normalizedSource = normalize(sourceName);
         if (normalizedSource.isEmpty()) {
             return null;
+        }
+
+        String aliasedTarget = FIELD_ALIASES.get(normalizedSource);
+        if (aliasedTarget != null && properties.containsKey(aliasedTarget) && !claimedTargets.containsKey(aliasedTarget)) {
+            return new FieldMatch(sourceName, aliasedTarget, 0);
         }
 
         List<FieldMatch> candidates = new ArrayList<>();

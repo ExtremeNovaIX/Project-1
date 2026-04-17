@@ -10,6 +10,8 @@ import p1.json.TolerantJsonFieldRepairer.RepairReport;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.List;
 
 @Slf4j
@@ -17,8 +19,10 @@ public class TolerantJsonCodec implements Json.JsonCodec {
 
     private static final List<String> REPAIR_PACKAGE_PREFIXES = List.of(
             "p1.model",
-            "p1.component.ai.service"
+            "p1.service.FactExtractionService"
     );
+
+    private static final List<String> JSON_KEYWORDS = List.of("true", "false", "null");
 
     private final Object delegate;
     private final Method toJsonMethod;
@@ -27,11 +31,6 @@ public class TolerantJsonCodec implements Json.JsonCodec {
     private final ObjectMapper objectMapper;
     private final TolerantJsonFieldRepairer fieldRepairer;
 
-    /**
-     * 这里并不重写 LangChain4j 默认的 JSON codec，
-     * 而是通过反射包一层默认的 JacksonJsonCodec。
-     * 正常情况下完全沿用默认行为，只有默认反序列化失败时才进入修复流程。
-     */
     public TolerantJsonCodec() {
         try {
             Class<?> codecClass = Class.forName("dev.langchain4j.internal.JacksonJsonCodec");
@@ -51,7 +50,7 @@ public class TolerantJsonCodec implements Json.JsonCodec {
 
             this.objectMapper = (ObjectMapper) objectMapperMethod.invoke(delegate);
             this.fieldRepairer = new TolerantJsonFieldRepairer(objectMapper);
-            log.info("[JSON修复] 已装配宽容 JsonCodec，将在默认反序列化失败时自动尝试字段修复");
+            log.info("[JSON repair] tolerant JsonCodec initialized");
         } catch (Exception e) {
             throw new IllegalStateException("failed to initialize tolerant json codec", e);
         }
@@ -74,6 +73,21 @@ public class TolerantJsonCodec implements Json.JsonCodec {
             T result = (T) fromJsonClassMethod.invoke(delegate, json, type);
             return result;
         } catch (Exception e) {
+            String sanitizedJson = sanitizeJsonText(json);
+            if (!sanitizedJson.equals(json)) {
+                try {
+                    @SuppressWarnings("unchecked")
+                    T result = (T) fromJsonClassMethod.invoke(delegate, sanitizedJson, type);
+                    log.info("[JSON repair] sanitized JSON parsed successfully, targetType={}", targetType);
+                    return result;
+                } catch (Exception sanitizedException) {
+                    e.addSuppressed(sanitizedException);
+                    if (!shouldRepair(targetType)) {
+                        throw propagateOriginal(sanitizedException);
+                    }
+                    return repairAndRead(sanitizedJson, targetType, sanitizedException);
+                }
+            }
             if (!shouldRepair(targetType)) {
                 throw propagateOriginal(e);
             }
@@ -89,6 +103,21 @@ public class TolerantJsonCodec implements Json.JsonCodec {
             T result = (T) fromJsonTypeMethod.invoke(delegate, json, type);
             return result;
         } catch (Exception e) {
+            String sanitizedJson = sanitizeJsonText(json);
+            if (!sanitizedJson.equals(json)) {
+                try {
+                    @SuppressWarnings("unchecked")
+                    T result = (T) fromJsonTypeMethod.invoke(delegate, sanitizedJson, type);
+                    log.info("[JSON repair] sanitized JSON parsed successfully, targetType={}", targetType);
+                    return result;
+                } catch (Exception sanitizedException) {
+                    e.addSuppressed(sanitizedException);
+                    if (!shouldRepair(targetType)) {
+                        throw propagateOriginal(sanitizedException);
+                    }
+                    return repairAndRead(sanitizedJson, targetType, sanitizedException);
+                }
+            }
             if (!shouldRepair(targetType)) {
                 throw propagateOriginal(e);
             }
@@ -98,7 +127,7 @@ public class TolerantJsonCodec implements Json.JsonCodec {
 
     private <T> T repairAndRead(String json, JavaType targetType, Exception originalException) {
         try {
-            log.warn("[JSON修复] 默认反序列化失败，进入修复流程，targetType={}，reason={}",
+            log.warn("[JSON repair] default deserialization failed, targetType={}, reason={}",
                     targetType, rootMessage(originalException));
             JsonNode originalTree = objectMapper.readTree(json);
             RepairReport report = fieldRepairer.repair(originalTree, targetType);
@@ -106,13 +135,13 @@ public class TolerantJsonCodec implements Json.JsonCodec {
             T result = objectMapper.readerFor(targetType).readValue(repairedTree);
 
             if (report.changed()) {
-                log.info("[JSON修复] 修复成功，targetType={}，修复项={}", targetType, report.describeChanges());
+                log.info("[JSON repair] field repair succeeded, targetType={}, changes={}", targetType, report.describeChanges());
             } else {
-                log.info("[JSON修复] 进入修复流程但没有可修复字段，targetType={}，将按原结构继续解析", targetType);
+                log.info("[JSON repair] entered field repair flow but no field changes were needed, targetType={}", targetType);
             }
             return result;
         } catch (Exception repairException) {
-            log.error("[JSON修复] 修复失败，targetType={}，原始失败原因={}，修复失败原因={}",
+            log.error("[JSON repair] repair failed, targetType={}, originalReason={}, repairReason={}",
                     targetType,
                     rootMessage(originalException),
                     rootMessage(repairException));
@@ -121,10 +150,6 @@ public class TolerantJsonCodec implements Json.JsonCodec {
         }
     }
 
-    /**
-     * 只对白名单包下的结构化 DTO 启用字段修复。
-     * 这样可以避免全局 JSON codec 误影响普通字符串服务或其他不希望放宽约束的类型。
-     */
     private boolean shouldRepair(JavaType targetType) {
         if (targetType == null) {
             return false;
@@ -147,6 +172,271 @@ public class TolerantJsonCodec implements Json.JsonCodec {
         }
         String className = rawClass.getName();
         return REPAIR_PACKAGE_PREFIXES.stream().anyMatch(className::startsWith);
+    }
+
+    private String sanitizeJsonText(String rawJson) {
+        if (rawJson == null || rawJson.isBlank()) {
+            return rawJson;
+        }
+
+        String text = stripMarkdownFence(rawJson.trim());
+        if (looksLikeWholeJsonValue(text)) {
+            return repairInterleavedNoise(text);
+        }
+
+        String extractedJson = extractFirstValidJsonSegment(text);
+        if (extractedJson != null) {
+            return extractedJson;
+        }
+
+        return repairInterleavedNoise(text);
+    }
+
+    private String stripMarkdownFence(String text) {
+        if (!text.startsWith("```")) {
+            return text;
+        }
+
+        int firstLineBreak = text.indexOf('\n');
+        int lastFence = text.lastIndexOf("```");
+        if (firstLineBreak >= 0 && lastFence > firstLineBreak) {
+            return text.substring(firstLineBreak + 1, lastFence).trim();
+        }
+        return text;
+    }
+
+    private boolean looksLikeWholeJsonValue(String text) {
+        if (text == null || text.isBlank()) {
+            return false;
+        }
+
+        char first = text.charAt(0);
+        char last = text.charAt(text.length() - 1);
+        return (first == '{' && last == '}')
+                || (first == '[' && last == ']');
+    }
+
+    private String extractFirstValidJsonSegment(String text) {
+        if (text == null || text.isBlank()) {
+            return text;
+        }
+
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c != '{' && c != '[') {
+                continue;
+            }
+
+            String candidate = extractBalancedJsonValue(text, i);
+            if (candidate == null) {
+                continue;
+            }
+
+            String parseableCandidate = parseableCandidate(candidate);
+            if (parseableCandidate != null) {
+                return parseableCandidate;
+            }
+        }
+        return null;
+    }
+
+    private String parseableCandidate(String candidate) {
+        if (isValidJson(candidate)) {
+            return candidate;
+        }
+
+        String repairedCandidate = repairInterleavedNoise(candidate);
+        if (!repairedCandidate.equals(candidate) && isValidJson(repairedCandidate)) {
+            return repairedCandidate;
+        }
+        return null;
+    }
+
+    private boolean isValidJson(String text) {
+        try {
+            objectMapper.readTree(text);
+            return true;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private String repairInterleavedNoise(String text) {
+        if (text == null || text.isBlank()) {
+            return text;
+        }
+
+        StringBuilder repaired = new StringBuilder(text.length());
+        boolean changed = false;
+        boolean inString = false;
+        boolean escaped = false;
+
+        for (int i = 0; i < text.length(); ) {
+            char c = text.charAt(i);
+
+            if (inString) {
+                repaired.append(c);
+                if (escaped) {
+                    escaped = false;
+                } else if (c == '\\') {
+                    escaped = true;
+                } else if (c == '"') {
+                    inString = false;
+                }
+                i++;
+                continue;
+            }
+
+            if (c == '"') {
+                repaired.append(c);
+                inString = true;
+                i++;
+                continue;
+            }
+
+            if (Character.isWhitespace(c) || isStructuralCharacter(c)) {
+                repaired.append(c);
+                i++;
+                continue;
+            }
+
+            int numberEnd = consumeJsonNumber(text, i);
+            if (numberEnd > i) {
+                repaired.append(text, i, numberEnd);
+                i = numberEnd;
+                continue;
+            }
+
+            String keyword = consumeJsonKeyword(text, i);
+            if (keyword != null) {
+                repaired.append(keyword);
+                i += keyword.length();
+                continue;
+            }
+
+            changed = true;
+            i++;
+        }
+
+        return changed ? repaired.toString() : text;
+    }
+
+    private boolean isStructuralCharacter(char c) {
+        return c == '{'
+                || c == '}'
+                || c == '['
+                || c == ']'
+                || c == ':'
+                || c == ',';
+    }
+
+    private int consumeJsonNumber(String text, int start) {
+        int index = start;
+        if (text.charAt(index) == '-') {
+            index++;
+        }
+        if (index >= text.length() || !Character.isDigit(text.charAt(index))) {
+            return start;
+        }
+
+        if (text.charAt(index) == '0') {
+            index++;
+        } else {
+            while (index < text.length() && Character.isDigit(text.charAt(index))) {
+                index++;
+            }
+        }
+
+        if (index < text.length() && text.charAt(index) == '.') {
+            int fractionStart = ++index;
+            while (index < text.length() && Character.isDigit(text.charAt(index))) {
+                index++;
+            }
+            if (fractionStart == index) {
+                return start;
+            }
+        }
+
+        if (index < text.length() && (text.charAt(index) == 'e' || text.charAt(index) == 'E')) {
+            int exponentStart = index++;
+            if (index < text.length() && (text.charAt(index) == '+' || text.charAt(index) == '-')) {
+                index++;
+            }
+            int digitsStart = index;
+            while (index < text.length() && Character.isDigit(text.charAt(index))) {
+                index++;
+            }
+            if (digitsStart == index) {
+                return exponentStart;
+            }
+        }
+
+        return index;
+    }
+
+    private String consumeJsonKeyword(String text, int start) {
+        for (String keyword : JSON_KEYWORDS) {
+            if (text.startsWith(keyword, start) && isKeywordBoundary(text, start + keyword.length())) {
+                return keyword;
+            }
+        }
+        return null;
+    }
+
+    private boolean isKeywordBoundary(String text, int index) {
+        return index >= text.length()
+                || Character.isWhitespace(text.charAt(index))
+                || isStructuralCharacter(text.charAt(index));
+    }
+
+    private String extractBalancedJsonValue(String text, int start) {
+        Deque<Character> stack = new ArrayDeque<>();
+        boolean inString = false;
+        boolean escaped = false;
+
+        for (int i = start; i < text.length(); i++) {
+            char c = text.charAt(i);
+
+            if (inString) {
+                if (escaped) {
+                    escaped = false;
+                } else if (c == '\\') {
+                    escaped = true;
+                } else if (c == '"') {
+                    inString = false;
+                }
+                continue;
+            }
+
+            if (c == '"') {
+                inString = true;
+                continue;
+            }
+
+            if (c == '{' || c == '[') {
+                stack.push(c);
+                continue;
+            }
+
+            if (c != '}' && c != ']') {
+                continue;
+            }
+
+            if (stack.isEmpty() || !isMatchingPair(stack.peek(), c)) {
+                return null;
+            }
+
+            stack.pop();
+            if (stack.isEmpty()) {
+                return text.substring(start, i + 1).trim();
+            }
+        }
+        return null;
+    }
+
+    private boolean isMatchingPair(char open, char close) {
+        return (open == '{' && close == '}')
+                || (open == '[' && close == ']');
     }
 
     private RuntimeException propagateOriginal(Exception exception) {

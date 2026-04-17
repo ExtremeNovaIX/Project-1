@@ -1,7 +1,7 @@
 package p1.config;
 
-import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
+import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -10,33 +10,30 @@ import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
 import dev.langchain4j.service.AiServices;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.ApplicationRunner;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.util.StringUtils;
 import p1.component.ai.assistant.FrontendAssistant;
+import p1.component.ai.assistant.FrontendChatRequestAugmentor;
 import p1.component.ai.assistant.TestAssistant;
 import p1.component.ai.memory.ArchivableChatMemory;
 import p1.component.ai.memory.ChatMessageAppender;
-import p1.component.ai.memory.MemoryCompressor;
+import p1.component.ai.memory.MemoryAsyncCompressor;
+import p1.component.ai.service.FactEvaluatorAiService;
 import p1.component.ai.service.FactExtractionAiService;
-import p1.component.ai.service.MemoryLogicJudgeAiService;
-import p1.component.ai.service.MemoryPatchMergeAiService;
 import p1.component.ai.tools.MemorySearchTools;
-import p1.component.ai.vector.LuceneMemoryVectorStore;
-import p1.component.ai.vector.MemoryVectorStore;
 import p1.component.log.AiServiceLoggingListener;
 import p1.component.log.AssistantLoggingListener;
 import p1.config.prop.AssistantProperties;
 import p1.config.prop.LockProperties;
-import org.springframework.util.StringUtils;
 import p1.repo.db.ChatLogRepository;
-import p1.service.markdown.DialogueMarkdownService;
+import p1.service.markdown.RawMdService;
 import p1.utils.SessionUtil;
 
 import java.net.URI;
 import java.net.http.HttpClient;
-import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.Map;
@@ -79,10 +76,12 @@ public class AiConfig {
     @Bean
     public FrontendAssistant frontendAssistant(@Qualifier("localChatModel") ChatModel chatModel,
                                                ChatMemoryProvider chatMemoryProvider,
+                                               FrontendChatRequestAugmentor frontendChatRequestAugmentor,
                                                MemorySearchTools memorySearchTools) {
         return AiServices.builder(FrontendAssistant.class)
                 .chatModel(chatModel)
                 .chatMemoryProvider(chatMemoryProvider)
+                .chatRequestTransformer(frontendChatRequestAugmentor::augment)
                 .tools(memorySearchTools)
                 .build();
     }
@@ -102,29 +101,22 @@ public class AiConfig {
     }
 
     @Bean
-    public MemoryLogicJudgeAiService memoryLogicJudgeAiService(@Qualifier("backendChatModel") ChatModel backendChatModel) {
-        return AiServices.builder(MemoryLogicJudgeAiService.class)
+    public FactEvaluatorAiService factScoringAiService(@Qualifier("backendChatModel") ChatModel backendChatModel) {
+        return AiServices.builder(FactEvaluatorAiService.class)
                 .chatModel(backendChatModel)
                 .build();
     }
 
     @Bean
-    public MemoryPatchMergeAiService memoryPatchMergeAiService(@Qualifier("backendChatModel") ChatModel backendChatModel) {
-        return AiServices.builder(MemoryPatchMergeAiService.class)
-                .chatModel(backendChatModel)
-                .build();
-    }
-
-    @Bean
-    public ChatMemoryProvider chatMemoryProvider(MemoryCompressor compressor,
+    public ChatMemoryProvider chatMemoryProvider(MemoryAsyncCompressor compressor,
                                                  ChatMessageAppender dbAppender,
-                                                 DialogueMarkdownService dialogueMarkdownService,
+                                                 RawMdService rawMdService,
                                                  LockProperties lockProperties,
                                                  ChatLogRepository chatLogRepository) {
         return memoryId -> {
             String sessionId = SessionUtil.normalizeSessionId(memoryId.toString());
             return memoryCache.computeIfAbsent(sessionId,
-                    id -> new ArchivableChatMemory(id, compressor, dbAppender, dialogueMarkdownService, props, lockProperties, chatLogRepository)
+                    id -> new ArchivableChatMemory(id, compressor, dbAppender, rawMdService, props, lockProperties, chatLogRepository)
             );
         };
     }
@@ -145,11 +137,6 @@ public class AiConfig {
         }
 
         return builder.build();
-    }
-
-    @Bean
-    public MemoryVectorStore memoryVectorStore() {
-        return new LuceneMemoryVectorStore(Paths.get(props.getEmbeddingStore().getPath()));
     }
 
     @Bean

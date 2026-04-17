@@ -1,10 +1,9 @@
 package p1.utils;
 
-import dev.langchain4j.data.message.*;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.message.*;
 
 import java.time.LocalDateTime;
-
 import java.util.List;
 import java.util.stream.Collectors;
 

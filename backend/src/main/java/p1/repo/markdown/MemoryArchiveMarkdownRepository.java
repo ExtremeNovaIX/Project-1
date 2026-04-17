@@ -3,7 +3,7 @@ package p1.repo.markdown;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import p1.config.prop.AssistantProperties;
-import p1.repo.markdown.io.MarkdownFrontmatterIO;
+import p1.repo.markdown.io.MarkdownYamlIO;
 import p1.repo.markdown.model.MarkdownDocument;
 
 import java.io.IOException;
@@ -20,7 +20,7 @@ import java.util.stream.Stream;
 public class MemoryArchiveMarkdownRepository {
 
     private final AssistantProperties props;
-    private final MarkdownFrontmatterIO markdownFrontmatterIO;
+    private final MarkdownYamlIO markdownYamlIO;
 
     public Optional<MarkdownDocument> find(Path path) {
         if (!Files.exists(path)) {
@@ -28,7 +28,7 @@ public class MemoryArchiveMarkdownRepository {
         }
 
         try {
-            return Optional.of(markdownFrontmatterIO.read(path));
+            return Optional.of(markdownYamlIO.read(path));
         } catch (IOException e) {
             throw new IllegalStateException("failed to read memory archive markdown", e);
         }
@@ -36,7 +36,7 @@ public class MemoryArchiveMarkdownRepository {
 
     public void save(Path path, MarkdownDocument document) {
         try {
-            markdownFrontmatterIO.write(path, document);
+            markdownYamlIO.write(path, document);
         } catch (IOException e) {
             throw new IllegalStateException("failed to write memory archive markdown", e);
         }
@@ -59,11 +59,16 @@ public class MemoryArchiveMarkdownRepository {
         List<Path> result = new ArrayList<>();
         try (Stream<Path> stream = Files.walk(root)) {
             stream.filter(Files::isRegularFile)
-                    .filter(path -> path.toString().replace('\\', '/').contains("/wiki/memories/"))
+                    .filter(this::isArchivePath)
                     .forEach(result::add);
         } catch (IOException e) {
             throw new IllegalStateException("failed to scan memory archive markdown files", e);
         }
         return result;
+    }
+
+    private boolean isArchivePath(Path path) {
+        String normalized = path.toString().replace('\\', '/');
+        return normalized.contains("/wiki/memories/");
     }
 }

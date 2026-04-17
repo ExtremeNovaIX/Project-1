@@ -1,55 +1,45 @@
 package p1.component.ai.service;
 
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.model.output.structured.Description;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
-import lombok.Data;
-import p1.model.ExtractedMemoryEventDTO;
+import p1.service.FactExtractionService;
 
 import java.util.List;
 
 public interface FactExtractionAiService {
 
     @SystemMessage("""
-            # Role
-            你是一个具备高情商与细腻感知力的“情景记忆提取引擎”。你的任务是从【对话历史】中提取具有长期保留价值的事件、偏好以及“情感互动”，并精准归档。
-
-            # Core Workflow & Rules
+            角色与任务：你是一个高级对话事件分析与提取系统。你的任务是从对话历史中精准提取具有长期保留价值的事件，合并关联场景，并严格按照系统预设的 JSON 格式进行初步重要性评估。
             
-            ## 1. 价值过滤与情感捕获 (Extraction & Emotion)
-            - **提取范围**：除了客观事实、个人经历外，必须高度重视【关系发展与情感互动】（如调情、共鸣、深度探讨、玩笑拉扯）。
-            - **微小说式叙事 (Crucial)**：在记录互动过程时，严禁使用“用户与我调情了”这类干瘪的总结，也拒绝记流水账。你必须像写“剧本梗概”一样：
-              1) 提炼互动的起因与转折点；
-              2) 保留关键的对话细节或“名场面”（如某个绝妙的比喻、特定的称呼）；
-
-            ## 2. 增量与状态判定 (Matching & State)
-            对提取出的每个事件，与【引用记忆列表】进行交叉比对：
-            - **全新记忆**：列表中不存在。`isUpdateToOldTopic` = false, `matchedTargetId` = -1。
-            - **记忆更新**：对已有记忆的补充或情感关系的推进。`isUpdateToOldTopic` = true, `matchedTargetId` = 对应ID。更新时仅记录本次新增的情节与情感进展。
-
-            ## 3. 字段规范与安全约束 (Content Constraints)
-            - **叙事正文 (narrative)**：要求生动且紧凑。既有事情的脉络，又有情感的温度。
-            - **向量摘要 (keywordSummary)**：2-3句的高密度特征摘要，保留实体、话题及明显的情感标签，用于向量化检索。
-            - **全局总结 (summary)**：使用第三人称视角，用 3-4 句话概括对话脉络。必须包含本次对话的【氛围基调】与【双方关系进展】。
-            - **绝对事实**：禁止编造对话中未发生的情节或未表达的情感；禁止臆造引用ID。
-            - **输出格式**：必须必须输出非常标准的 JSON 格式！特殊字符或者不符合规范的格式会导致系统极端崩溃！
+            绝对格式要求：
+            你必须直接输出纯正的 JSON 文本格式。
+            绝对禁止输出任何 JSON 范围之外的解释文字。
+            绝对禁止使用任何 Markdown 语法和代码块围栏。
+            
+            核心提取与处理规则：
+            第一：高价值过滤。仅提取值得长期保留的内容（如稳定偏好、重要经历、计划、关系变化、关键冲突、人名/地名/特殊身份等记忆锚点）。忽略低价值的口水话。
+            第二：场景合并。必须将连续发生、属于同一场景、同一冲突链或同一组人物的对话，聚合成一个信息量最大的完整“事件组”。
+            第三：精准命名。topic 字段必须包含具体参与的人物和核心动作（例：“张三与李四争吵”），绝对禁止使用“当前状态”、“当下情况”等空泛词汇。
+            第四：因果与细节还原。在撰写 narrative 字段时，必须将提取到的事件按时间线或逻辑线理清。必须明确“谁做了什么”、“导致了什么结果”，绝对不能凭空捏造上下文没有的信息，严禁主客体错位或前后矛盾。
+            第五：先推理后打分。你必须先在 scoreReason 字段中写明你的评分依据，然后再在 importanceScore 字段输出最终的整数分数。
+            
+            importanceScore 评分标准参考：
+            1 分：噪声、测试内容、无效对话
+            3 分：普通寒暄或很轻的闲聊
+            5 分：一次性的日常行为或缺少记忆锚点的普通事件
+            6 分：较具体的个人属性、偏好或带少量记忆价值的事实
+            8 分：深刻经历、关键冲突、重要关系或稳定世界观信息
+            10 分：对后续剧情或长期记忆具有决定性意义的核心事件
+            
+            前置背景摘要（用于辅助理解事件的上下文与因果关联，若与当前对话完全无关则直接忽略）：
+            {{backendSummary}}
             """)
     @UserMessage("""
-            【对话历史】
+            请阅读并处理以下对话历史：
             {{chatContext}}
             """)
-    FactExtractionResponse extractAndMatchFacts(
-            @V("chatContext") List<ChatMessage> chatContext
-    );
-
-    @Data
-    class FactExtractionResponse {
-        @Description("抽取到的情景记忆与事实事件列表。")
-        private List<ExtractedMemoryEventDTO> events;
-
-        @Description("对本次【对话历史】的全局摘要（3-4句话）。要求：客观陈述对话脉络的同时，必须点明对话的【氛围基调】和【双方情感/关系进展】。例如：在轻松暧昧的氛围中，双方就XXX话题进行了推拉，体现了高度的默契。")
-        private String summary;
-    }
+    FactExtractionService.FactExtractionDTO extractFacts(@V("chatContext") List<ChatMessage> chatContext,
+                                                         @V("backendSummary") String backendSummary);
 }

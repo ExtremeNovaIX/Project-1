@@ -18,14 +18,14 @@ spring:
       ddl-auto: update
 
 assistant:
-  mode: local
+  mode: api
 
   api:
     chat-model:
       api-key: ${DEEPSEEK_API_KEY:default_value}
       base-url: https://api.deepseek.com
       model-name: deepseek-chat
-      timeout-seconds: 60
+      timeout-seconds: 300
       log-enabled: false
     embedding-model:
       api-key: ${DASHSCOPE_API_KEY:default_value}
@@ -35,8 +35,8 @@ assistant:
   local:
     chat-model:
       base-url: http://127.0.0.1:1234/v1
-      model-name: gemma-4-a4b@q4_k_s
-      timeout-seconds: 120
+      model-name: qwen3.6
+      timeout-seconds: 600
       log-enabled: false
     embedding-model:
       base-url: http://127.0.0.1:1234/v1
@@ -46,20 +46,14 @@ assistant:
     chat-model:
       api-key: ${DEEPSEEK_API_KEY:default_value}
       base-url: https://api.deepseek.com
-      model-name: deepseek-chat
+      model-name: deepseek-v4-flash
       timeout-seconds: 120
       log-enabled: false
 
   chat-memory:
-    max-messages: 80
-    trigger-compress-threshold: 20
-    compress-count: 14
-    duplication-threshold: 0.93
-    related-threshold: 0.5
+    trigger-compress-threshold: 30
+    compress-count: 30
     context-max-summary-count: 3
-    patch-merge-threshold: 3
-    patch-merge-max-count: 3
-    patch-merge-scan-fixed-delay-ms: 1800000
 
   lock:
     session-lock-wait-timeout-ms: 10000
@@ -72,6 +66,29 @@ assistant:
 
   md-repository:
     path: data/memory
+
+  event-tree:
+    # recent-24h 候选的基础向量分阈值。低于这个值的候选不会参与连边。
+    recent-window-score-link-threshold: 0.5
+    # recent 事件组窗口保留时长，单位小时。
+    recent-window-hours: 24
+    # recent-window 过期扫描任务的执行间隔，单位毫秒。
+    recent-window-scan-fixed-delay-ms: 3600000
+    # 共享 tag 的 IDF boost 权重。最终候选分 = 向量基础分 * (1 + weight * idf01)。
+    recent-window-idf-boost-weight: 0.9
+    # IDF 公式中 N 侧的平滑项，分子为 N + doc-count-smoothing。
+    recent-window-idf-doc-count-smoothing: 1.0
+    # IDF 公式中 df(tag) 侧的平滑项，分母为 df(tag) + df-smoothing。
+    recent-window-idf-df-smoothing: 1.0
+    # 将原始 IDF 累积分数映射到 [0,1] 的归一化尺度。越小越容易饱和。
+    recent-window-idf-normalization-scale: 1.5
+    # 至少共享多少个 tag 才触发 IDF boost。
+    recent-window-idf-min-shared-tags: 1
+    # recent-window 候选的时间衰减系数。最终时间因子 = exp(-coefficient * ageHours / recent-window-hours)。
+    # 系数越大，越靠近窗口尾部的旧组越容易被压分；0 表示关闭时间衰减。
+    recent-window-time-decay-coefficient: 0.3
+    # 最终连接边的最低得分阈值，低于这个值的边会被拦截。
+    recent-window-final-threshold: 0.7
 
   markdown-migration:
     enabled: false

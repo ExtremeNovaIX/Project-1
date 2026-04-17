@@ -1,56 +1,103 @@
 package p1.json;
 
 import org.junit.jupiter.api.Test;
-import p1.component.ai.service.FactExtractionAiService;
+import p1.service.FactExtractionService;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 
 class TolerantJsonCodecTest {
 
     private final TolerantJsonCodec codec = new TolerantJsonCodec();
 
     @Test
-    void shouldRepairSlightlyWrongFieldNamesForNestedDto() {
+    void shouldRepairNoiseBetweenArrayItemsInFencedJson() {
         String json = """
+                ```json
                 {
-                  "summery": "这是一次关于养猫偏好的对话总结",
                   "events": [
                     {
-                      "topik": "养猫偏好",
-                      "narrativ": "用户在纠结养纯种猫还是领养流浪猫。",
-                      "keywordSummry": "养猫，纯种猫，流浪猫，领养偏好",
-                      "importanceScor": 7
+                      "topic": "first event",
+                      "narrative": "first narrative",
+                      "scoreReason": "first reason",
+                      "importanceScore": 7
+                    },
+                ly   {
+                      "topic": "second event",
+                      "narrative": "second narrative",
+                      "scoreReason": "second reason",
+                      "importanceScore": 8
                     }
                   ]
                 }
+                ```
                 """;
 
-        FactExtractionAiService.FactExtractionResponse response =
-                codec.fromJson(json, FactExtractionAiService.FactExtractionResponse.class);
+        FactExtractionService.FactExtractionDTO result = codec.fromJson(json, FactExtractionService.FactExtractionDTO.class);
 
-        assertEquals("这是一次关于养猫偏好的对话总结", response.getSummary());
-        assertNotNull(response.getEvents());
-        assertEquals(1, response.getEvents().size());
-        assertEquals("养猫偏好", response.getEvents().getFirst().getTopic());
-        assertEquals("用户在纠结养纯种猫还是领养流浪猫。", response.getEvents().getFirst().getNarrative());
-        assertEquals("养猫，纯种猫，流浪猫，领养偏好", response.getEvents().getFirst().getKeywordSummary());
-        assertEquals(7, response.getEvents().getFirst().getImportanceScore());
+        assertEquals(2, result.payloadEvents().size());
+        assertEquals("first event", result.payloadEvents().get(0).getTopic());
+        assertEquals(8, result.payloadEvents().get(1).getImportanceScore());
     }
 
     @Test
-    void shouldNotRepairTypeOutsideWhitelist() {
+    void shouldKeepWholeRootWhenMalformedJsonCannotBeRepaired() {
         String json = """
+                ```json
                 {
-                  "valu": "demo"
+                  "events": [
+                    {
+                      "topic": "only event",
+                      "narrative": "only narrative",
+                      "scoreReason": "only reason",
+                      "importanceScore": 6
+                    }
+                  ]
+                  "tail": "still malformed"
                 }
+                ```
                 """;
 
-        assertThrows(RuntimeException.class, () -> codec.fromJson(json, NonWhitelistedDto.class));
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> codec.fromJson(json, FactExtractionService.FactExtractionDTO.class)
+        );
+
+        String message = rootMessage(exception);
+        assertTrue(message.contains("Unexpected character"));
+        assertFalse(message.contains("Unrecognized field \"topic\""));
     }
 
-    private static class NonWhitelistedDto {
-        public String value;
+    @Test
+    void shouldRepairTypoFieldNameForFactScoringDto() {
+        String json = """
+                ```json
+                {
+                  "events": [
+                    {
+                      "topic": "conflict-upgraded",
+                      "keywordswSummary": "The confrontation escalated and became a long-term memory candidate."
+                    }
+                  ],
+                  "summary": "The batch centered on a conflict escalation."
+                }
+                ```
+                """;
+
+        FactExtractionService.FactSummaryDTO result = codec.fromJson(json, FactExtractionService.FactSummaryDTO.class);
+
+        assertEquals(1, result.payloadEvents().size());
+        assertEquals("conflict-upgraded", result.payloadEvents().getFirst().getTopic());
+        assertEquals(
+                "The confrontation escalated and became a long-term memory candidate.",
+                result.payloadEvents().getFirst().getKeywordSummary()
+        );
+    }
+
+    private String rootMessage(Throwable throwable) {
+        Throwable current = throwable;
+        while (current.getCause() != null) {
+            current = current.getCause();
+        }
+        return current.getClass().getSimpleName() + ": " + String.valueOf(current.getMessage());
     }
 }

@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 @Table(name = "chat_logs")
 @Data
 @NoArgsConstructor
+// 聊天日志实体类，存储所有对话记录在数据库中
 public class ChatLogEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

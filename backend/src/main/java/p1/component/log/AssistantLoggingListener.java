@@ -55,10 +55,8 @@ public class AssistantLoggingListener implements ChatModelListener {
             input = "N/A";
         }
 
+        ChatSessionMetrics.TokenSnapshot currentTokens = ChatSessionMetrics.TokenSnapshot.from(usage);
         ChatSessionMetrics.TokenSnapshot tokenTotals = chatSessionMetrics.addAndGetTokenTotals(sessionId, usage);
-        long inputTokens = usage == null ? 0L : usage.inputTokenCount();
-        long outputTokens = usage == null ? 0L : usage.outputTokenCount();
-        long totalTokens = usage == null ? 0L : usage.totalTokenCount();
 
         StringBuilder sb = new StringBuilder();
         sb.append("\n")
@@ -70,10 +68,18 @@ public class AssistantLoggingListener implements ChatModelListener {
                 .append(AnsiOutput.toString(AnsiColor.CYAN, "[请求]: " + input)).append("\n")
                 .append(AnsiOutput.toString(AnsiColor.BRIGHT_WHITE, "[输出]: " + aiOutput.trim())).append("\n")
                 .append(AnsiOutput.toString(AnsiColor.WHITE, "[本次调用 Tokens]: ",
-                        AnsiColor.BRIGHT_YELLOW, "[I:", inputTokens, " O:", outputTokens, " T:", totalTokens, "]",
+                        AnsiColor.BRIGHT_YELLOW, "[I:", currentTokens.input(), " O:", currentTokens.output(), " T:", currentTokens.total(), "]",
+                        AnsiColor.DEFAULT)).append("\n")
+                .append(AnsiOutput.toString(AnsiColor.WHITE, "[本次缓存命中]: ",
+                        AnsiColor.BRIGHT_YELLOW,
+                        "[Hit:", currentTokens.cachedInput(), " I:", currentTokens.input(), " Rate:", currentTokens.cachedInputRatePercent(), "]",
                         AnsiColor.DEFAULT)).append("\n")
                 .append(AnsiOutput.toString(AnsiColor.WHITE, "[Session Tokens]: ",
                         AnsiColor.BRIGHT_YELLOW, "[I:", tokenTotals.input(), " O:", tokenTotals.output(), " T:", tokenTotals.total(), "]",
+                        AnsiColor.DEFAULT)).append("\n")
+                .append(AnsiOutput.toString(AnsiColor.WHITE, "[Session缓存命中]: ",
+                        AnsiColor.BRIGHT_YELLOW,
+                        "[Hit:", tokenTotals.cachedInput(), " I:", tokenTotals.input(), " Rate:", tokenTotals.cachedInputRatePercent(), "]",
                         AnsiColor.DEFAULT)).append("\n")
                 .append(AnsiOutput.toString(AnsiColor.BRIGHT_CYAN,
                         "=================================================================================================="));

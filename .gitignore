@@ -6,3 +6,4 @@ backend/data/assistant_db.trace.db
 /chara/test
 /.idea
 .idea/workspace.xml
+/backend/test

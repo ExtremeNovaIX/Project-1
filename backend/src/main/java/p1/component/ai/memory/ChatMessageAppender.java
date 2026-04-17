@@ -8,21 +8,23 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import p1.model.enums.DialogueMessageRole;
 import p1.repo.markdown.model.DialogueBatchMessage;
-import p1.service.markdown.DialogueMarkdownService;
+import p1.service.markdown.RawMdService;
 import p1.utils.ChatMessageUtil;
-import p1.utils.TimedMessageUtil;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class ChatMessageAppender {
-    private final DialogueMarkdownService dialogueMarkdownService;
+    private final RawMdService rawMdService;
 
-    public void append(String sessionId, ChatMessage message) {
+    /**
+     * 追加聊天消息到 raw目录下原始对话记录markdown文件。
+     */
+    public void appendToRaw(String sessionId, ChatMessage message) {
         try {
+            // 只有用户消息和 AI 最终答复会进入持久化 backlog；工具中间态统一忽略。
             switch (message) {
                 case UserMessage msg ->
                         handleAppend(sessionId, DialogueMessageRole.USER, ChatMessageUtil.extractText(msg));
@@ -41,8 +43,7 @@ public class ChatMessageAppender {
         String cleanText = text == null ? "" : text.trim();
         if (cleanText.isBlank()) return;
 
-        LocalDateTime createdAt = TimedMessageUtil.parse(cleanText);
-        dialogueMarkdownService.appendDialogueMessage(sessionId, role, cleanText, createdAt);
+        rawMdService.appendRawMessage(sessionId, role, cleanText);
     }
 
     public record DialogueBatch(String batchId, String sessionId, List<DialogueBatchMessage> messages) {

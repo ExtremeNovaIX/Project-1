@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import p1.infrastructure.vector.MemoryVectorLibrary;
 
 import java.util.List;
 
@@ -32,7 +33,8 @@ class EmbeddingServiceTest {
 
     @Test
     void searchEmbedding_shouldUseRealEmbeddingModel() {
-        EmbeddingSearchResult<TextSegment> result = embeddingService.searchEmbedding(QUERY, MAX_RESULTS, MIN_SCORE);
+        EmbeddingSearchResult<TextSegment> result =
+                embeddingService.searchEmbedding("default", MemoryVectorLibrary.ARCHIVE, QUERY, MAX_RESULTS, MIN_SCORE);
 
         assertNotNull(result);
         assertNotNull(result.matches());

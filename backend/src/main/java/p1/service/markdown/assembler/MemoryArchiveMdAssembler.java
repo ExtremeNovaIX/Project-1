@@ -1,5 +1,6 @@
 package p1.service.markdown.assembler;
 
+import lombok.NonNull;
 import org.springframework.stereotype.Component;
 import p1.infrastructure.markdown.*;
 import p1.model.document.MemoryArchiveDocument;
@@ -12,13 +13,11 @@ import java.util.Set;
 
 @Component
 public class MemoryArchiveMdAssembler {
-
-    private static final String ARCHIVE_EVENT_TAG = "archive/event";
     private static final String RETRIEVAL_SUMMARY_HEADER = "## Retrieval Summary";
     private static final String LINKS_HEADER = "## Links";
     private static final String EVENT_GRAPH_TRACE_HEADER = "## Event Graph Trace";
 
-    public MemoryArchiveDocument fromMarkdown(MarkdownDocument document) {
+    public MemoryArchiveDocument fromMarkdown(@NonNull MarkdownDocument document) {
         FrontmatterReader frontmatter = FrontmatterReader.of(document.frontmatter());
         MarkdownSections sections = MarkdownSections.parse(document.body(), List.of(
                 RETRIEVAL_SUMMARY_HEADER,
@@ -44,11 +43,11 @@ public class MemoryArchiveMdAssembler {
         return archive;
     }
 
-    public MarkdownDocument toMarkdown(MemoryArchiveDocument archive) {
+    public MarkdownDocument toMarkdown(@NonNull MemoryArchiveDocument archive) {
         return toMarkdown(archive, List.of());
     }
 
-    public MarkdownDocument toMarkdown(MemoryArchiveDocument archive, List<RenderedArchiveLink> renderedLinks) {
+    public MarkdownDocument toMarkdown(@NonNull MemoryArchiveDocument archive, List<RenderedArchiveLink> renderedLinks) {
         String displayTitle = buildTitle(archive);
         Map<String, Object> frontmatter = new FrontmatterBuilder()
                 .put("id", noteId(archive.getId()))
@@ -97,9 +96,9 @@ public class MemoryArchiveMdAssembler {
         return String.format("memory-%05d", id);
     }
 
-    public String buildTitle(MemoryArchiveDocument archive) {
-        String topic = normalize(archive == null ? null : archive.getTopic());
-        return topic.isBlank() ? noteId(archive == null ? 0L : archive.getId()) : topic;
+    public String buildTitle(@NonNull MemoryArchiveDocument archive) {
+        String topic = normalize(archive.getTopic());
+        return topic.isBlank() ? noteId(archive.getId()) : topic;
     }
 
     private Long archiveIdValue(String value) {
@@ -124,16 +123,16 @@ public class MemoryArchiveMdAssembler {
         return text == null ? "" : text.trim();
     }
 
-    private List<String> buildTags(MemoryArchiveDocument archive) {
+    private List<String> buildTags(@NonNull MemoryArchiveDocument archive) {
         Set<String> tags = new LinkedHashSet<>();
-        tags.add(ARCHIVE_EVENT_TAG);
+        tags.add(archive.getGroupId());
 
-        String groupId = normalize(archive == null ? null : archive.getGroupId());
+        String groupId = normalize(archive.getGroupId());
         if (!groupId.isBlank()) {
             tags.add(groupId);
         }
 
-        if (archive != null && archive.getGroupTags() != null) {
+        if (!archive.getGroupTags().isEmpty()) {
             for (String groupTag : archive.getGroupTags()) {
                 String normalizedGroupTag = normalize(groupTag);
                 if (!normalizedGroupTag.isBlank()) {
@@ -145,7 +144,10 @@ public class MemoryArchiveMdAssembler {
         return List.copyOf(tags);
     }
 
-    private List<String> resolveGroupTags(FrontmatterReader frontmatter) {
+    /**
+     * 从 frontmatter 中解析 group_tags。
+     */
+    private List<String> resolveGroupTags(@NonNull FrontmatterReader frontmatter) {
         List<String> explicitGroupTags = frontmatter.stringList("group_tags");
         if (!explicitGroupTags.isEmpty()) {
             return explicitGroupTags;
@@ -155,7 +157,6 @@ public class MemoryArchiveMdAssembler {
         return frontmatter.stringList("tags").stream()
                 .map(this::normalize)
                 .filter(tag -> !tag.isBlank())
-                .filter(tag -> !ARCHIVE_EVENT_TAG.equals(tag))
                 .filter(tag -> !tag.equals(groupId))
                 .distinct()
                 .toList();

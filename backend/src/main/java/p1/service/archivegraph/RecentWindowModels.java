@@ -258,7 +258,7 @@ record RankResult(List<CandidateTrace> candidates, LinkTarget winner) {
  * @param archiveId      候选 archive 的唯一标识，用于最终落边
  * @param bestScore      该 archive 在所有命中中的最高原始向量分数
  * @param groupOrder     archive 在目标 group 内的顺序位置，通常越靠前越接近 root
- * @param searchableText 用于标签匹配的归一化全文本（topic + keywordSummary + narrative）//TODO 验证一下是否合理
+ * @param searchableText 用于标签匹配的归一化全文本（topic + keywordSummary + narrative）
  */
 record AnchorCandidate(Long archiveId,
                        double bestScore,

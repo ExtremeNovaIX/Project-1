@@ -13,7 +13,7 @@ import org.springframework.boot.ansi.AnsiColor;
 import org.springframework.boot.ansi.AnsiOutput;
 import org.springframework.boot.ansi.AnsiStyle;
 import org.springframework.stereotype.Component;
-import p1.mdc.ChatSessionMetrics;
+import p1.infrastructure.mdc.ChatSessionMetrics;
 import p1.utils.ChatMessageUtil;
 import p1.utils.LogUtil;
 

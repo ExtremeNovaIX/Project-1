@@ -3,9 +3,9 @@ package p1.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import p1.component.ai.assistant.CharacterPromptRegistry;
-import p1.component.ai.assistant.FrontendAssistant;
-import p1.component.ai.memory.SummaryCacheManager;
+import p1.component.agent.core.CharacterPromptRegistry;
+import p1.component.agent.core.RpAgent;
+import p1.component.agent.context.SummaryCacheManager;
 import p1.model.dto.ChatRequestDTO;
 
 @Service
@@ -13,15 +13,15 @@ import p1.model.dto.ChatRequestDTO;
 @Slf4j
 public class ChatService {
 
-    private final FrontendAssistant frontendAssistant;
+    private final RpAgent rpAgent;
     private final CharacterPromptRegistry characterPromptRegistry;
     private final SummaryCacheManager summaryCacheManager;
 
-    public String sendChatToLLM(ChatRequestDTO request) {
+    public String sendChatToRpAgent(ChatRequestDTO request) {
         String sessionId = request.getSessionId();
         String userMessage = request.getMessage();
         String rolePrompt = characterPromptRegistry.getPrompt(request.getCharacterName());
         String currentSummary = summaryCacheManager.getSummary(sessionId);
-        return frontendAssistant.chat(sessionId, userMessage, rolePrompt, currentSummary);
+        return rpAgent.chat(sessionId, userMessage, rolePrompt, currentSummary);
     }
 }

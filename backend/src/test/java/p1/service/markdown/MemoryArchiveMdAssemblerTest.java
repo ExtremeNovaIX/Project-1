@@ -1,10 +1,10 @@
 package p1.service.markdown;
 
 import org.junit.jupiter.api.Test;
-import p1.model.ArchiveLinkRecord;
+import p1.component.agent.model.ArchiveLinkRecord;
 import p1.model.document.MemoryArchiveDocument;
-import p1.repo.markdown.model.MarkdownDocument;
-import p1.service.markdown.assembler.MemoryArchiveMdAssembler;
+import p1.infrastructure.markdown.model.MarkdownDocument;
+import p1.infrastructure.markdown.assembler.MemoryArchiveMdAssembler;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -53,7 +53,6 @@ class MemoryArchiveMdAssemblerTest {
         assertFalse(markdown.frontmatter().containsKey("title"));
         assertEquals(
                 List.of(
-                        "archive/event",
                         "group-20260424210000",
                         "night-market",
                         "jiang-nan"

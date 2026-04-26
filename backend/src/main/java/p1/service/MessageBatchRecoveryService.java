@@ -6,11 +6,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
-import p1.component.ai.memory.ChatMessageAppender;
-import p1.component.ai.memory.MemoryAsyncCompressor;
+import p1.component.agent.memory.ChatMessageAppender;
+import p1.component.agent.memory.MemoryAsyncCompressor;
 import p1.config.prop.AssistantProperties;
-import p1.repo.markdown.model.DialogueBatchMessage;
-import p1.repo.markdown.model.RawBatchDocument;
+import p1.infrastructure.markdown.model.DialogueBatchMessage;
+import p1.infrastructure.markdown.model.RawBatchDocument;
 import p1.service.markdown.RawMdService;
 
 import java.util.List;

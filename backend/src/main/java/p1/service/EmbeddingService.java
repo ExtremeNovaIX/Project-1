@@ -23,7 +23,6 @@ public class EmbeddingService {
 
     /**
      * 在指定 session、指定库中执行语义检索。
-     * 这一层只负责向量检索，不承担任何业务对象还原逻辑。
      */
     public EmbeddingSearchResult<TextSegment> searchEmbedding(String sessionId,
                                                               MemoryVectorLibrary library,

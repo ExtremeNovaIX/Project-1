@@ -2,7 +2,7 @@ package p1.model.document;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import p1.model.ArchiveLinkRecord;
+import p1.component.agent.model.ArchiveLinkRecord;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;

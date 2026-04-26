@@ -15,20 +15,23 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.util.StringUtils;
-import p1.component.ai.assistant.FrontendAssistant;
-import p1.component.ai.assistant.FrontendChatRequestAugmentor;
-import p1.component.ai.assistant.TestAssistant;
-import p1.component.ai.memory.ArchivableChatMemory;
-import p1.component.ai.memory.ChatMessageAppender;
-import p1.component.ai.memory.MemoryAsyncCompressor;
-import p1.component.ai.service.FactEvaluatorAiService;
-import p1.component.ai.service.FactExtractionAiService;
-import p1.component.ai.tools.MemorySearchTools;
+import p1.component.agent.core.RpAgent;
+import p1.component.agent.context.RpRequestTimeAppender;
+import p1.component.agent.aiservice.TestAiService;
+import p1.component.agent.core.ToolCallingAgent;
+import p1.component.agent.core.ToolCallingPlanner;
+import p1.component.agent.memory.ArchivableChatMemory;
+import p1.component.agent.memory.ChatMessageAppender;
+import p1.component.agent.memory.MemoryAsyncCompressor;
+import p1.component.agent.memory.FactEvaluatorAiService;
+import p1.component.agent.memory.FactExtractionAiService;
+import p1.component.agent.tools.BackendAssistantGatewayTool;
+import p1.component.agent.tools.ToolCallResultStore;
 import p1.component.log.AiServiceLoggingListener;
 import p1.component.log.AssistantLoggingListener;
 import p1.config.prop.AssistantProperties;
 import p1.config.prop.LockProperties;
-import p1.repo.db.ChatLogRepository;
+import p1.service.ChatLogRepository;
 import p1.service.markdown.RawMdService;
 import p1.utils.SessionUtil;
 
@@ -74,22 +77,38 @@ public class AiConfig {
     }
 
     @Bean
-    public FrontendAssistant frontendAssistant(@Qualifier("localChatModel") ChatModel chatModel,
-                                               ChatMemoryProvider chatMemoryProvider,
-                                               FrontendChatRequestAugmentor frontendChatRequestAugmentor,
-                                               MemorySearchTools memorySearchTools) {
-        return AiServices.builder(FrontendAssistant.class)
+    public RpAgent frontendAssistant(@Qualifier("localChatModel") ChatModel chatModel,
+                                     ChatMemoryProvider chatMemoryProvider,
+                                     RpRequestTimeAppender rpRequestTimeAppender,
+                                     BackendAssistantGatewayTool backendAssistantGatewayTool) {
+        return AiServices.builder(RpAgent.class)
                 .chatModel(chatModel)
                 .chatMemoryProvider(chatMemoryProvider)
-                .chatRequestTransformer(frontendChatRequestAugmentor::augment)
-                .tools(memorySearchTools)
+                .chatRequestTransformer(rpRequestTimeAppender::augment)
+                .tools(backendAssistantGatewayTool)
                 .build();
     }
 
     @Bean
-    public TestAssistant testAssistant(@Qualifier("testChatModel") ChatModel chatModel) {
-        return AiServices.builder(TestAssistant.class)
+    public TestAiService testAssistant(@Qualifier("testChatModel") ChatModel chatModel) {
+        return AiServices.builder(TestAiService.class)
                 .chatModel(chatModel)
+                .build();
+    }
+
+    @Bean
+    public ToolCallingPlanner toolCallingRouterPlanner(@Qualifier("backendChatModel") ChatModel backendChatModel) {
+        return AiServices.builder(ToolCallingPlanner.class)
+                .chatModel(backendChatModel)
+                .build();
+    }
+
+    @Bean
+    public ToolCallingAgent toolCallingAgent(@Qualifier("backendChatModel") ChatModel backendChatModel,
+                                             ToolCallResultStore toolCallResultStore) {
+        return AiServices.builder(ToolCallingAgent.class)
+                .chatModel(backendChatModel)
+                .afterToolExecution(toolCallResultStore::record)
                 .build();
     }
 

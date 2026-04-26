@@ -3,7 +3,7 @@ package p1.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
-import p1.mdc.MdcTaskDecorator;
+import p1.infrastructure.mdc.MdcTaskDecorator;
 
 import java.util.concurrent.Executor;
 

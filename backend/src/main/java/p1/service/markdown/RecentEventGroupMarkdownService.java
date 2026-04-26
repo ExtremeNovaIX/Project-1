@@ -3,17 +3,11 @@ package p1.service.markdown;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import p1.config.prop.AssistantProperties;
-import p1.model.RecentEventGroupLinkRecord;
+import p1.component.agent.model.RecentEventGroupLinkRecord;
 import p1.model.document.MemoryArchiveDocument;
 import p1.model.document.RecentEventGroupDocument;
-import p1.repo.markdown.RecentEventGroupMarkdownRepository;
-import p1.repo.markdown.model.MarkdownDocument;
-import p1.service.markdown.assembler.RecentEventGroupMdAssembler;
 import p1.utils.SessionUtil;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -29,10 +23,7 @@ public class RecentEventGroupMarkdownService {
     private static final DateTimeFormatter GROUP_ID_TIME_FORMAT =
             DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
-    private final AssistantProperties props;
-    private final RecentEventGroupMarkdownRepository repository;
-    private final RecentEventGroupMdAssembler mapper;
-    private final MemoryArchiveMarkdownService archiveService;
+    private final RecentEventGroupStore store;
 
     public RecentEventGroupDocument create(String groupId,
                                            String sessionId,
@@ -83,23 +74,15 @@ public class RecentEventGroupMarkdownService {
         group.setGroupTags(normalizeTags(group.getGroupTags()));
         group.setLinks(normalizeLinks(group.getLinks()));
 
-        MarkdownDocument document = mapper.toMarkdown(group, buildRenderedArchiveRefs(group));
-        repository.save(resolvePath(group.getSessionId(), group.getId()), document);
-        return group;
+        return store.save(group);
     }
 
     public Optional<RecentEventGroupDocument> findById(String sessionId, String groupId) {
-        String normalizedSessionId = SessionUtil.normalizeSessionId(sessionId);
-        return repository.find(resolvePath(normalizedSessionId, groupId)).map(mapper::fromMarkdown);
+        return store.findById(sessionId, groupId);
     }
 
     public List<RecentEventGroupDocument> findAllBySessionId(String sessionId) {
-        Path root = baseDirectory(SessionUtil.normalizeSessionId(sessionId));
-        return repository.listAllPaths(root).stream()
-                .map(repository::find)
-                .flatMap(Optional::stream)
-                .map(mapper::fromMarkdown)
-                .toList();
+        return store.findAllBySessionId(sessionId);
     }
 
     public Optional<RecentEventGroupDocument> findLatestBySessionId(String sessionId) {
@@ -109,13 +92,7 @@ public class RecentEventGroupMarkdownService {
     }
 
     public List<RecentEventGroupDocument> findAll() {
-        Path root = Paths.get(props.getMdRepository().getPath(), "_system", "sessions");
-        return repository.listAllPaths(root).stream()
-                .filter(path -> path.toString().replace('\\', '/').contains("/recent-event-groups/"))
-                .map(repository::find)
-                .flatMap(Optional::stream)
-                .map(mapper::fromMarkdown)
-                .toList();
+        return store.findAll();
     }
 
     public void touch(String sessionId, String groupId, LocalDateTime hitTime) {
@@ -181,19 +158,7 @@ public class RecentEventGroupMarkdownService {
     }
 
     public void delete(String sessionId, String groupId) {
-        repository.delete(resolvePath(SessionUtil.normalizeSessionId(sessionId), groupId));
-    }
-
-    private Path resolvePath(String sessionId, String groupId) {
-        return baseDirectory(sessionId).resolve(groupId + ".md");
-    }
-
-    private Path baseDirectory(String sessionId) {
-        return Paths.get(props.getMdRepository().getPath(),
-                "_system",
-                "sessions",
-                sessionId,
-                "recent-event-groups");
+        store.delete(sessionId, groupId);
     }
 
     private String nextGroupId() {
@@ -249,41 +214,6 @@ public class RecentEventGroupMarkdownService {
                 normalizedReason
         ));
         return true;
-    }
-
-    private List<RecentEventGroupMdAssembler.RenderedArchiveRef> buildRenderedArchiveRefs(RecentEventGroupDocument group) {
-        if (group == null || group.getArchiveIds() == null || group.getArchiveIds().isEmpty()) {
-            return List.of();
-        }
-
-        return group.getArchiveIds().stream()
-                .map(this::toRenderedArchiveRef)
-                .toList();
-    }
-
-    private RecentEventGroupMdAssembler.RenderedArchiveRef toRenderedArchiveRef(Long archiveId) {
-        if (archiveId == null) {
-            return new RecentEventGroupMdAssembler.RenderedArchiveRef("");
-        }
-        return archiveService.findById(archiveId)
-                .map(this::toRenderedArchiveRef)
-                .orElseGet(() -> {
-                    String noteId = archiveService.noteId(archiveId);
-                    return new RecentEventGroupMdAssembler.RenderedArchiveRef("[[" + noteId + "|" + noteId + "]]");
-                });
-    }
-
-    private RecentEventGroupMdAssembler.RenderedArchiveRef toRenderedArchiveRef(MemoryArchiveDocument archive) {
-        String path = archiveService.relativeNotePath(archive);
-        String label = archiveService.displayTitle(archive);
-        String wikilink;
-        if (path.isBlank()) {
-            String noteId = archiveService.noteId(archive.getId());
-            wikilink = "[[" + noteId + "|" + noteId + "]]";
-        } else {
-            wikilink = "[[" + path + "|" + label + "]]";
-        }
-        return new RecentEventGroupMdAssembler.RenderedArchiveRef(wikilink);
     }
 
     private String normalize(String text) {

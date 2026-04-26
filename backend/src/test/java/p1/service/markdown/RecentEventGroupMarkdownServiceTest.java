@@ -3,15 +3,16 @@ package p1.service.markdown;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import p1.config.prop.AssistantProperties;
-import p1.model.RecentEventGroupLinkRecord;
+import p1.component.agent.model.RecentEventGroupLinkRecord;
+import p1.infrastructure.markdown.MarkdownFileAccess;
+import p1.infrastructure.markdown.MarkdownMemoryArchiveStore;
+import p1.infrastructure.markdown.assembler.MemoryArchiveMdAssembler;
+import p1.infrastructure.markdown.assembler.RecentEventGroupMdAssembler;
+import p1.infrastructure.markdown.MarkdownRecentEventGroupStore;
 import p1.model.document.MemoryArchiveDocument;
 import p1.model.document.RecentEventGroupDocument;
-import p1.repo.markdown.MemoryArchiveMarkdownRepository;
-import p1.repo.markdown.RecentEventGroupMarkdownRepository;
-import p1.repo.markdown.io.MarkdownYamlIO;
-import p1.repo.markdown.model.MarkdownDocument;
-import p1.service.markdown.assembler.MemoryArchiveMdAssembler;
-import p1.service.markdown.assembler.RecentEventGroupMdAssembler;
+import p1.infrastructure.markdown.io.MarkdownFrontmatterIO;
+import p1.infrastructure.markdown.model.MarkdownDocument;
 
 import java.nio.file.Path;
 import java.time.LocalDateTime;
@@ -25,23 +26,25 @@ class RecentEventGroupMarkdownServiceTest {
     Path tempDir;
 
     @Test
-    void shouldCreateTouchAndDeleteRecentEventGroup() {
+    void shouldCreateTouchAndDeleteRecentEventGroup() throws Exception {
         AssistantProperties props = new AssistantProperties();
         AssistantProperties.MdRepositoryConfig repositoryConfig = new AssistantProperties.MdRepositoryConfig();
         repositoryConfig.setPath(tempDir.toString());
         props.setMdRepository(repositoryConfig);
-        MemoryArchiveMarkdownService archiveService = new MemoryArchiveMarkdownService(
+        MarkdownFrontmatterIO markdownFrontmatterIO = new MarkdownFrontmatterIO();
+        MarkdownFileAccess fileAccess = new MarkdownFileAccess(markdownFrontmatterIO);
+        MemoryArchiveStore archiveService = new MarkdownMemoryArchiveStore(
                 props,
-                new MemoryArchiveMarkdownRepository(props, new MarkdownYamlIO()),
+                fileAccess,
                 new MemoryArchiveMdAssembler()
         );
-        RecentEventGroupMarkdownRepository groupRepository = new RecentEventGroupMarkdownRepository(new MarkdownYamlIO());
-
         RecentEventGroupMarkdownService service = new RecentEventGroupMarkdownService(
-                props,
-                groupRepository,
-                new RecentEventGroupMdAssembler(),
-                archiveService
+                new MarkdownRecentEventGroupStore(
+                        props,
+                        fileAccess,
+                        new RecentEventGroupMdAssembler(),
+                        archiveService
+                )
         );
 
         MemoryArchiveDocument first = new MemoryArchiveDocument();
@@ -73,8 +76,7 @@ class RecentEventGroupMarkdownServiceTest {
         assertEquals(List.of(first.getId(), second.getId()), loaded.getArchiveIds());
         assertEquals(List.of("recent-1", "recent-2"), loaded.getRecentVectorDocumentIds());
         assertEquals(List.of("night-market", "jiang-nan"), loaded.getGroupTags());
-        MarkdownDocument groupMarkdown = groupRepository.find(tempDir.resolve("_system/sessions/test/recent-event-groups/group-1.md"))
-                .orElseThrow();
+        MarkdownDocument groupMarkdown = markdownFrontmatterIO.read(tempDir.resolve("_system/sessions/test/recent-event-groups/group-1.md"));
         assertTrue(groupMarkdown.body().contains("## Events"));
         assertTrue(groupMarkdown.body().contains("[[sessions/test/wiki/memories/relationship-progress|relationship-progress]]"));
         assertTrue(groupMarkdown.body().contains("[[sessions/test/wiki/memories/long-term-companionship|long-term-companionship]]"));
@@ -92,23 +94,25 @@ class RecentEventGroupMarkdownServiceTest {
     }
 
     @Test
-    void shouldPersistBidirectionalGroupLinks() {
+    void shouldPersistBidirectionalGroupLinks() throws Exception {
         AssistantProperties props = new AssistantProperties();
         AssistantProperties.MdRepositoryConfig repositoryConfig = new AssistantProperties.MdRepositoryConfig();
         repositoryConfig.setPath(tempDir.toString());
         props.setMdRepository(repositoryConfig);
-        MemoryArchiveMarkdownService archiveService = new MemoryArchiveMarkdownService(
+        MarkdownFrontmatterIO markdownFrontmatterIO = new MarkdownFrontmatterIO();
+        MarkdownFileAccess fileAccess = new MarkdownFileAccess(markdownFrontmatterIO);
+        MemoryArchiveStore archiveService = new MarkdownMemoryArchiveStore(
                 props,
-                new MemoryArchiveMarkdownRepository(props, new MarkdownYamlIO()),
+                fileAccess,
                 new MemoryArchiveMdAssembler()
         );
-        RecentEventGroupMarkdownRepository groupRepository = new RecentEventGroupMarkdownRepository(new MarkdownYamlIO());
-
         RecentEventGroupMarkdownService service = new RecentEventGroupMarkdownService(
-                props,
-                groupRepository,
-                new RecentEventGroupMdAssembler(),
-                archiveService
+                new MarkdownRecentEventGroupStore(
+                        props,
+                        fileAccess,
+                        new RecentEventGroupMdAssembler(),
+                        archiveService
+                )
         );
 
         MemoryArchiveDocument first = new MemoryArchiveDocument();
@@ -151,9 +155,9 @@ class RecentEventGroupMarkdownServiceTest {
         assertEquals("group-current", matchedLink.getTargetGroupId());
         assertEquals("current-group-head", matchedLink.getTargetTopic());
 
-        MarkdownDocument currentMarkdown = groupRepository.find(
+        MarkdownDocument currentMarkdown = markdownFrontmatterIO.read(
                 tempDir.resolve("_system/sessions/test/recent-event-groups/group-current.md")
-        ).orElseThrow();
+        );
         assertTrue(String.valueOf(currentMarkdown.frontmatter().get("links")).contains("target_group_id=group-matched"));
         assertTrue(String.valueOf(currentMarkdown.frontmatter().get("links")).contains("target_topic=matched-group-head"));
     }

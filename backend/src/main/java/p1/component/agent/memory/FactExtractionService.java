@@ -6,8 +6,8 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import p1.component.agent.context.SummaryCacheManager;
-import p1.component.agent.model.FactExtractionPipelineResult;
-import p1.component.agent.model.ExtractedMemoryEvent;
+import p1.component.agent.memory.model.FactExtractionPipelineResult;
+import p1.component.agent.memory.model.ExtractedMemoryEvent;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;

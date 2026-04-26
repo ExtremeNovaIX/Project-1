@@ -33,6 +33,7 @@ public class ChatController {
         MDC.put("chatRound", String.valueOf(currentRound));
         try {
             String rawReply = chatService.sendChatToRpAgent(request);
+            rawReply = rawReply == null ? "" : rawReply;
             List<String> replyList;
             if (request.isShortMode()) {
                 String splitRegex = "(?<=[。！？?!;；…])(?![。！？?!;；…])|(?<=\\.)(?![。！？?!;；…\\.0-9])|(?=\\[)";

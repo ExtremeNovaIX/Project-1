@@ -1,4 +1,4 @@
-package p1.component.agent.model;
+package p1.component.agent.memory.model;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -11,7 +11,7 @@ import p1.model.document.MemoryArchiveDocument;
  */
 @Data
 @NoArgsConstructor
-public class ArchiveLinkRecord {
+public class ArchiveLink {
 
     /**
      * 边的关系类型。
@@ -43,18 +43,18 @@ public class ArchiveLinkRecord {
      */
     private String reason;
 
-    public ArchiveLinkRecord(String relation,
-                             Long targetArchiveId,
-                             Double confidence,
-                             String reason) {
+    public ArchiveLink(String relation,
+                       Long targetArchiveId,
+                       Double confidence,
+                       String reason) {
         this(relation, targetArchiveId, null, confidence, reason);
     }
 
-    public ArchiveLinkRecord(String relation,
-                             Long targetArchiveId,
-                             String targetTopic,
-                             Double confidence,
-                             String reason) {
+    public ArchiveLink(String relation,
+                       Long targetArchiveId,
+                       String targetTopic,
+                       Double confidence,
+                       String reason) {
         this.relation = relation;
         this.targetArchiveId = targetArchiveId;
         this.targetTopic = targetTopic;

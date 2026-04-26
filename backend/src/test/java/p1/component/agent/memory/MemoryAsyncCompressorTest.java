@@ -6,8 +6,8 @@ import dev.langchain4j.data.message.UserMessage;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import p1.component.agent.context.SummaryCacheManager;
-import p1.component.agent.model.FactExtractionPipelineResult;
-import p1.component.agent.model.ExtractedMemoryEvent;
+import p1.component.agent.memory.model.FactExtractionPipelineResult;
+import p1.component.agent.memory.model.ExtractedMemoryEvent;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;

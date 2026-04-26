@@ -6,7 +6,7 @@ import p1.component.agent.memory.MemoryWriteService;
 import p1.infrastructure.vector.ArchiveVectorLibrary;
 import p1.model.document.MemoryArchiveDocument;
 import p1.model.document.RecentEventGroupDocument;
-import p1.component.agent.model.ExtractedMemoryEvent;
+import p1.component.agent.memory.model.ExtractedMemoryEvent;
 import p1.service.archive.ArchiveEmbeddingService;
 import p1.service.archive.graph.ArchiveGraphService;
 import p1.service.archive.graph.ArchiveLinkService;

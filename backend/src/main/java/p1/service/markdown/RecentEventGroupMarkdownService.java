@@ -3,7 +3,7 @@ package p1.service.markdown;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import p1.component.agent.model.RecentEventGroupLinkRecord;
+import p1.component.agent.memory.model.RecentEventGroupLinkRecord;
 import p1.model.document.MemoryArchiveDocument;
 import p1.model.document.RecentEventGroupDocument;
 import p1.utils.SessionUtil;

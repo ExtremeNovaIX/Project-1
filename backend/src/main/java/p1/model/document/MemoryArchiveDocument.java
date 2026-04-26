@@ -2,7 +2,7 @@ package p1.model.document;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import p1.component.agent.model.ArchiveLinkRecord;
+import p1.component.agent.memory.model.ArchiveLink;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -73,5 +73,5 @@ public class MemoryArchiveDocument {
      * 当前 archive 节点发出的边列表。
      * 这是粗糙图的一部分权威存储，包含组内天然边和跨组命中边。
      */
-    private List<ArchiveLinkRecord> links = new ArrayList<>();
+    private List<ArchiveLink> links = new ArrayList<>();
 }

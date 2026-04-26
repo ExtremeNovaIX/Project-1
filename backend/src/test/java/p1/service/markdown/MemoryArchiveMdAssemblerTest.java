@@ -1,7 +1,7 @@
 package p1.service.markdown;
 
 import org.junit.jupiter.api.Test;
-import p1.component.agent.model.ArchiveLinkRecord;
+import p1.component.agent.memory.model.ArchiveLink;
 import p1.model.document.MemoryArchiveDocument;
 import p1.infrastructure.markdown.model.MarkdownDocument;
 import p1.infrastructure.markdown.assembler.MemoryArchiveMdAssembler;
@@ -24,14 +24,14 @@ class MemoryArchiveMdAssemblerTest {
         archive.setGroupTags(List.of("night-market", "jiang-nan"));
         archive.setTopic("relationship-progress");
         archive.setKeywordSummary("The user expressed stronger emotional dependence.");
-        archive.setNarrative("The user showed a more stable and explicit emotional dependence in the dialogue.");
+        archive.setNarrative("The user showed a more stable and explicit emotional dependence in the night-market dialogue.");
         archive.setEventGraph("[[sessions/test/wiki/memories/earlier-scene|earlier-scene]]\n[[sessions/test/wiki/memories/later-scene|later-scene]]");
         archive.setEventGraphTrace("- winner: group-old#13\n\n### Query Matches\n\n- query#1 archiveId=12 weight=1.000 text=`relationship-progress` matchCount=1");
         archive.setCreatedAt(LocalDateTime.parse("2026-04-18T21:00:00"));
         archive.setUpdatedAt(LocalDateTime.parse("2026-04-18T21:05:00"));
         archive.setLinks(List.of(
-                new ArchiveLinkRecord("next_in_time", 13L, "shared-experience", 1.0, "next event in the same batch"),
-                new ArchiveLinkRecord("related_to", 14L, "emotional-anchor", 0.86, "same topic cluster")
+                new ArchiveLink("next_in_time", 13L, "shared-experience", 1.0, "next event in the same batch"),
+                new ArchiveLink("related_to", 14L, "emotional-anchor", 0.86, "same topic cluster")
         ));
 
         MarkdownDocument markdown = mapper.toMarkdown(
@@ -54,8 +54,7 @@ class MemoryArchiveMdAssemblerTest {
         assertEquals(
                 List.of(
                         "group-20260424210000",
-                        "night-market",
-                        "jiang-nan"
+                        "night-market"
                 ),
                 markdown.frontmatter().get("tags")
         );
@@ -70,7 +69,7 @@ class MemoryArchiveMdAssemblerTest {
         assertTrue(markdown.body().contains("## Event Graph Trace"));
 
         MemoryArchiveDocument restored = mapper.fromMarkdown(markdown);
-        assertEquals("The user showed a more stable and explicit emotional dependence in the dialogue.", restored.getNarrative());
+        assertEquals("The user showed a more stable and explicit emotional dependence in the night-market dialogue.", restored.getNarrative());
         assertEquals("The user expressed stronger emotional dependence.", restored.getKeywordSummary());
         assertEquals("group-20260424210000", restored.getGroupId());
         assertEquals(List.of("night-market", "jiang-nan"), restored.getGroupTags());

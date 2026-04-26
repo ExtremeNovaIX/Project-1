@@ -23,7 +23,7 @@ class ArchivableChatMemoryTest {
     @Test
     void shouldKeepContextWindowMessagesUntimedForFrontendAssistant() {
         MemoryAsyncCompressor compressor = mock(MemoryAsyncCompressor.class);
-        ChatMessageAppender chatMessageAppender = mock(ChatMessageAppender.class);
+        ChatMemoryAppender chatMemoryAppender = mock(ChatMemoryAppender.class);
         RawMdService rawMdService = mock(RawMdService.class);
         ChatLogRepository chatLogRepository = mock(ChatLogRepository.class);
 
@@ -38,7 +38,7 @@ class ArchivableChatMemoryTest {
         ArchivableChatMemory chatMemory = new ArchivableChatMemory(
                 "default",
                 compressor,
-                chatMessageAppender,
+                chatMemoryAppender,
                 rawMdService,
                 assistantProperties,
                 lockProperties,
@@ -50,7 +50,7 @@ class ArchivableChatMemoryTest {
         List<dev.langchain4j.data.message.ChatMessage> messages = chatMemory.messages();
         org.junit.jupiter.api.Assertions.assertEquals(1, messages.size());
         org.junit.jupiter.api.Assertions.assertEquals("hello there", ChatMessageUtil.extractText(messages.getFirst()));
-        verify(chatMessageAppender).appendToRaw(eq("default"), argThat(message ->
+        verify(chatMemoryAppender).appendToRaw(eq("default"), argThat(message ->
                 message != null && ChatMessageUtil.extractText(message).startsWith("[")
         ));
     }
@@ -58,7 +58,7 @@ class ArchivableChatMemoryTest {
     @Test
     void shouldContinueCompressionWhenProcessingAlreadyExists() {
         MemoryAsyncCompressor compressor = mock(MemoryAsyncCompressor.class);
-        ChatMessageAppender chatMessageAppender = mock(ChatMessageAppender.class);
+        ChatMemoryAppender chatMemoryAppender = mock(ChatMemoryAppender.class);
         RawMdService rawMdService = mock(RawMdService.class);
         ChatLogRepository chatLogRepository = mock(ChatLogRepository.class);
 
@@ -92,7 +92,7 @@ class ArchivableChatMemoryTest {
         ArchivableChatMemory chatMemory = new ArchivableChatMemory(
                 "default",
                 compressor,
-                chatMessageAppender,
+                chatMemoryAppender,
                 rawMdService,
                 assistantProperties,
                 lockProperties,
@@ -109,7 +109,7 @@ class ArchivableChatMemoryTest {
     @Test
     void shouldRetryCompressionAfterFailureCallbackReleasesLease() {
         MemoryAsyncCompressor compressor = mock(MemoryAsyncCompressor.class);
-        ChatMessageAppender chatMessageAppender = mock(ChatMessageAppender.class);
+        ChatMemoryAppender chatMemoryAppender = mock(ChatMemoryAppender.class);
         RawMdService rawMdService = mock(RawMdService.class);
         ChatLogRepository chatLogRepository = mock(ChatLogRepository.class);
 
@@ -149,7 +149,7 @@ class ArchivableChatMemoryTest {
         ArchivableChatMemory chatMemory = new ArchivableChatMemory(
                 "default",
                 compressor,
-                chatMessageAppender,
+                chatMemoryAppender,
                 rawMdService,
                 assistantProperties,
                 lockProperties,

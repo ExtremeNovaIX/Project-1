@@ -24,7 +24,7 @@ assistant:
     chat-model:
       api-key: ${DEEPSEEK_API_KEY:default_value}
       base-url: https://api.deepseek.com
-      model-name: deepseek-chat
+      model-name: deepseek-v4-flash
       timeout-seconds: 300
       log-enabled: false
     embedding-model:
@@ -52,7 +52,7 @@ assistant:
 
   chat-memory:
     trigger-compress-threshold: 30
-    compress-count: 30
+    compress-count: 26
     context-max-summary-count: 3
 
   lock:

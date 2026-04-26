@@ -4,7 +4,7 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import p1.component.agent.model.ArchiveLinkRecord;
+import p1.component.agent.memory.model.ArchiveLink;
 import p1.model.document.MemoryArchiveDocument;
 import p1.service.markdown.MemoryArchiveStore;
 import p1.service.markdown.RecentEventGroupMarkdownService;
@@ -180,7 +180,7 @@ public class ArchiveLinkService {
         String normalizedRelation = normalize(relation);
         String normalizedTargetTopic = normalize(targetTopic);
         String normalizedReason = normalize(reason);
-        for (ArchiveLinkRecord existingLink : sourceArchive.getLinks()) {
+        for (ArchiveLink existingLink : sourceArchive.getLinks()) {
             // 同一个 target + relation 视为同一条边，只有边内容真的变化时才标记为 changed。
             if (targetArchiveId.equals(existingLink.getTargetArchiveId())
                     && normalizedRelation.equals(normalize(existingLink.getRelation()))) {
@@ -198,7 +198,7 @@ public class ArchiveLinkService {
         }
 
         // 只有列表里确实没有同类边时，才追加一条新的 link。
-        sourceArchive.getLinks().add(new ArchiveLinkRecord(
+        sourceArchive.getLinks().add(new ArchiveLink(
                 normalizedRelation,
                 targetArchiveId,
                 normalizedTargetTopic,

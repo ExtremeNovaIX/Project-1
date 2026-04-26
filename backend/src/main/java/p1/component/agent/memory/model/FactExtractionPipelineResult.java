@@ -1,4 +1,4 @@
-package p1.component.agent.model;
+package p1.component.agent.memory.model;
 
 import java.util.List;
 

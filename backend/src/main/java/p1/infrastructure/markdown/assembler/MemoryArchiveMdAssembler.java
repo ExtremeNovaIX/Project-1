@@ -2,6 +2,7 @@ package p1.infrastructure.markdown.assembler;
 
 import lombok.NonNull;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import p1.infrastructure.markdown.codec.ArchiveLinkCodec;
 import p1.infrastructure.markdown.core.FrontmatterBuilder;
 import p1.infrastructure.markdown.core.FrontmatterReader;
@@ -82,8 +83,9 @@ public class MemoryArchiveMdAssembler {
         if (!bodyLinks.isEmpty()) {
             body.sectionHeader(LINKS_HEADER);
             for (RenderedArchiveLink link : bodyLinks) {
-                String reason = normalize(link.reason());
-                String line = "- " + normalize(link.relation()) + ": " + link.wikilink();
+                String reason = link.reason() == null ? "" : link.reason().trim();
+                String relation = link.relation() == null ? "" : link.relation().trim();
+                String line = "- " + relation + ": " + link.wikilink();
                 if (!reason.isBlank()) {
                     line += " - " + reason;
                 }
@@ -101,15 +103,15 @@ public class MemoryArchiveMdAssembler {
     }
 
     public String buildTitle(@NonNull MemoryArchiveDocument archive) {
-        String topic = normalize(archive.getTopic());
-        return topic.isBlank() ? noteId(archive.getId()) : topic;
+        String topic = archive.getTopic();
+        return StringUtils.hasText(topic) ? topic.trim() : noteId(archive.getId());
     }
 
     private Long archiveIdValue(String value) {
-        String text = normalize(value);
-        if (text.isBlank()) {
+        if (!StringUtils.hasText(value)) {
             return null;
         }
+        String text = value.trim();
         int lastDashIndex = text.lastIndexOf('-');
         if (lastDashIndex >= 0 && lastDashIndex + 1 < text.length()) {
             text = text.substring(lastDashIndex + 1);
@@ -118,33 +120,41 @@ public class MemoryArchiveMdAssembler {
     }
 
     private boolean isTimelineRelation(String relation) {
-        String normalizedRelation = normalize(relation);
-        return "next_in_time".equals(normalizedRelation)
-                || "previous_in_time".equals(normalizedRelation);
-    }
-
-    private String normalize(String text) {
-        return text == null ? "" : text.trim();
+        if (!StringUtils.hasText(relation)) {
+            return false;
+        }
+        String trimmedRelation = relation.trim();
+        return "next_in_time".equals(trimmedRelation)
+                || "previous_in_time".equals(trimmedRelation);
     }
 
     private List<String> buildTags(@NonNull MemoryArchiveDocument archive) {
         Set<String> tags = new LinkedHashSet<>();
-        tags.add(archive.getGroupId());
-
-        String groupId = normalize(archive.getGroupId());
-        if (!groupId.isBlank()) {
-            tags.add(groupId);
+        String groupId = archive.getGroupId();
+        if (StringUtils.hasText(groupId)) {
+            tags.add(groupId.trim());
         }
 
-        if (!archive.getGroupTags().isEmpty()) {
-            for (String groupTag : archive.getGroupTags()) {
-                String normalizedGroupTag = normalize(groupTag);
-                if (!normalizedGroupTag.isBlank()) {
-                    tags.add(normalizedGroupTag);
-                }
+        List<String> groupTags = archive.getGroupTags();
+        if (groupTags == null || groupTags.isEmpty()) {
+            return List.copyOf(tags);
+        }
+
+        String narrative = archive.getNarrative();
+        if (!StringUtils.hasText(narrative)) {
+            return List.copyOf(tags);
+        }
+
+        String trimmedNarrative = narrative.trim();
+        for (String groupTag : groupTags) {
+            if (!StringUtils.hasText(groupTag)) {
+                continue;
+            }
+            String trimmedGroupTag = groupTag.trim();
+            if (trimmedNarrative.contains(trimmedGroupTag)) {
+                tags.add(trimmedGroupTag);
             }
         }
-
         return List.copyOf(tags);
     }
 
@@ -157,11 +167,12 @@ public class MemoryArchiveMdAssembler {
             return explicitGroupTags;
         }
 
-        String groupId = normalize(frontmatter.string("group_id"));
+        String groupId = frontmatter.string("group_id");
+        String trimmedGroupId = StringUtils.hasText(groupId) ? groupId.trim() : "";
         return frontmatter.stringList("tags").stream()
-                .map(this::normalize)
-                .filter(tag -> !tag.isBlank())
-                .filter(tag -> !tag.equals(groupId))
+                .filter(StringUtils::hasText)
+                .map(String::trim)
+                .filter(tag -> !tag.equals(trimmedGroupId))
                 .distinct()
                 .toList();
     }

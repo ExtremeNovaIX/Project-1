@@ -3,7 +3,7 @@ package p1.service.markdown;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import p1.config.prop.AssistantProperties;
-import p1.component.agent.model.ArchiveLinkRecord;
+import p1.component.agent.memory.model.ArchiveLink;
 import p1.infrastructure.markdown.MarkdownFileAccess;
 import p1.infrastructure.markdown.MarkdownMemoryArchiveStore;
 import p1.infrastructure.markdown.assembler.MemoryArchiveMdAssembler;
@@ -39,8 +39,8 @@ class MarkdownMemoryArchiveStoreTest {
 
         MemoryArchiveDocument source = archive("test", "source-topic");
         source.setLinks(List.of(
-                new ArchiveLinkRecord("next_in_time", timelineTarget.getId(), timelineTarget.getTopic(), 1.0, "time edge"),
-                new ArchiveLinkRecord("recent_window_to", logicTarget.getId(), logicTarget.getTopic(), 0.81, "logic edge")
+                new ArchiveLink("next_in_time", timelineTarget.getId(), timelineTarget.getTopic(), 1.0, "time edge"),
+                new ArchiveLink("recent_window_to", logicTarget.getId(), logicTarget.getTopic(), 0.81, "logic edge")
         ));
         MemoryArchiveDocument saved = service.save(source);
 
@@ -78,8 +78,8 @@ class MarkdownMemoryArchiveStoreTest {
         existing.setGroupId("group-7");
         existing.setGroupTags(List.of("night-market", "jiang-nan"));
         existing.setLinks(List.of(
-                new ArchiveLinkRecord("next_in_time", 9L, "topic-9", 1.0, "time edge"),
-                new ArchiveLinkRecord("related_to", 10L, "topic-10", 0.77, "logic edge")
+                new ArchiveLink("next_in_time", 9L, "topic-9", 1.0, "time edge"),
+                new ArchiveLink("related_to", 10L, "topic-10", 0.77, "logic edge")
         ));
 
         Path existingPath = tempDir.resolve("sessions/test/wiki/memories/existing-topic.md");

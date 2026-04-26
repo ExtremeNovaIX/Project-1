@@ -3,7 +3,7 @@ package p1.service.archive.graph;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import p1.component.agent.model.ArchiveLinkRecord;
+import p1.component.agent.memory.model.ArchiveLink;
 import p1.model.document.MemoryArchiveDocument;
 import p1.service.markdown.MemoryArchiveStore;
 import p1.service.markdown.RecentEventGroupMarkdownService;
@@ -57,7 +57,7 @@ public class ArchiveGroupLinkSyncService {
      */
     private void syncGroupLinkFromArchiveLink(String sessionId,
                                               String currentGroupId,
-                                              @NonNull ArchiveLinkRecord link) {
+                                              @NonNull ArchiveLink link) {
         String relation = normalize(link.getRelation());
         String reverseRelation = reverseGroupRelation(relation);
         if (relation.isBlank() || reverseRelation.isBlank()) {

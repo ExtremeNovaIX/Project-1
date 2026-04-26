@@ -6,8 +6,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
-import p1.component.agent.memory.ChatMessageAppender;
 import p1.component.agent.memory.MemoryAsyncCompressor;
+import p1.component.agent.memory.model.DialogueBatch;
 import p1.config.prop.AssistantProperties;
 import p1.infrastructure.markdown.model.DialogueBatchMessage;
 import p1.infrastructure.markdown.model.RawBatchDocument;
@@ -43,7 +43,7 @@ public class MessageBatchRecoveryService {
 
         log.info("[对话恢复] 发现 {} 个 session 存在未完成的对话批次，正在恢复...", sessionIds.size());
         for (String sessionId : sessionIds) {
-            ChatMessageAppender.DialogueBatch processingBatch = rawMdService.findProcessing(sessionId)
+            DialogueBatch processingBatch = rawMdService.findProcessing(sessionId)
                     .map(this::toDialogueBatch)
                     .orElse(null);
             if (processingBatch != null) {
@@ -62,7 +62,7 @@ public class MessageBatchRecoveryService {
         }
     }
 
-    private void submitRecoveryCompression(ChatMessageAppender.DialogueBatch batch) {
+    private void submitRecoveryCompression(DialogueBatch batch) {
         if (batch == null || batch.messages().isEmpty()) {
             return;
         }
@@ -91,8 +91,8 @@ public class MessageBatchRecoveryService {
                 batch.sessionId(), batch.batchId()));
     }
 
-    private ChatMessageAppender.DialogueBatch toDialogueBatch(RawBatchDocument document) {
-        return new ChatMessageAppender.DialogueBatch(document.id(), document.sessionId(), document.messages());
+    private DialogueBatch toDialogueBatch(RawBatchDocument document) {
+        return new DialogueBatch(document.id(), document.sessionId(), document.messages());
     }
 
     private List<ChatMessage> toChatMessages(List<DialogueBatchMessage> pendingMessages) {

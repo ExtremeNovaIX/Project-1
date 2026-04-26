@@ -1,4 +1,4 @@
-package p1.component.agent.model;
+package p1.component.agent.memory.model;
 
 import dev.langchain4j.model.output.structured.Description;
 import lombok.Data;

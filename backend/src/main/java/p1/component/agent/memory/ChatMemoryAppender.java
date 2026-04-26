@@ -7,16 +7,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import p1.model.enums.MessageRole;
-import p1.infrastructure.markdown.model.DialogueBatchMessage;
 import p1.service.markdown.RawMdService;
 import p1.utils.ChatMessageUtil;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class ChatMessageAppender {
+public class ChatMemoryAppender {
     private final RawMdService rawMdService;
 
     /**
@@ -44,8 +41,5 @@ public class ChatMessageAppender {
         if (cleanText.isBlank()) return;
 
         rawMdService.appendRawMessage(sessionId, role, cleanText);
-    }
-
-    public record DialogueBatch(String batchId, String sessionId, List<DialogueBatchMessage> messages) {
     }
 }

@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import p1.component.agent.core.CharacterPromptRegistry;
 import p1.component.agent.core.RpAgent;
 import p1.component.agent.context.SummaryCacheManager;
+import p1.component.agent.core.RpAgentDTO;
 import p1.model.dto.ChatRequestDTO;
 
 @Service

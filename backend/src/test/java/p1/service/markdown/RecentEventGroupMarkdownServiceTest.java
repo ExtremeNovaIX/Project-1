@@ -3,7 +3,7 @@ package p1.service.markdown;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import p1.config.prop.AssistantProperties;
-import p1.component.agent.model.RecentEventGroupLinkRecord;
+import p1.component.agent.memory.model.RecentEventGroupLinkRecord;
 import p1.infrastructure.markdown.MarkdownFileAccess;
 import p1.infrastructure.markdown.MarkdownMemoryArchiveStore;
 import p1.infrastructure.markdown.assembler.MemoryArchiveMdAssembler;

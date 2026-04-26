@@ -1,7 +1,7 @@
 package p1.infrastructure.markdown.codec;
 
 import p1.infrastructure.markdown.core.FrontmatterReader;
-import p1.component.agent.model.ArchiveLinkRecord;
+import p1.component.agent.memory.model.ArchiveLink;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -19,13 +19,13 @@ public final class ArchiveLinkCodec {
     /**
      * 将节点的链接记录列表编码到文档的YAML头
      */
-    public static List<Map<String, Object>> toFrontmatter(List<ArchiveLinkRecord> links) {
+    public static List<Map<String, Object>> toFrontmatter(List<ArchiveLink> links) {
         if (links == null || links.isEmpty()) {
             return List.of();
         }
 
         List<Map<String, Object>> result = new ArrayList<>();
-        for (ArchiveLinkRecord link : links) {
+        for (ArchiveLink link : links) {
             if (link == null) {
                 continue;
             }
@@ -40,18 +40,18 @@ public final class ArchiveLinkCodec {
         return result;
     }
 
-    public static List<ArchiveLinkRecord> fromFrontmatter(Object value) {
+    public static List<ArchiveLink> fromFrontmatter(Object value) {
         if (!(value instanceof List<?> list) || list.isEmpty()) {
             return new ArrayList<>();
         }
 
-        List<ArchiveLinkRecord> result = new ArrayList<>();
+        List<ArchiveLink> result = new ArrayList<>();
         for (Object item : list) {
             if (!(item instanceof Map<?, ?> map)) {
                 continue;
             }
             FrontmatterReader reader = FrontmatterReader.of(map);
-            ArchiveLinkRecord link = new ArchiveLinkRecord();
+            ArchiveLink link = new ArchiveLink();
             link.setRelation(reader.string("relation"));
             link.setTargetArchiveId(reader.longValue("target_id"));
             link.setTargetTopic(reader.string("target_topic"));

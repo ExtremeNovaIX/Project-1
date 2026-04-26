@@ -3,6 +3,7 @@ package p1.component.agent.memory;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.memory.ChatMemory;
 import lombok.extern.slf4j.Slf4j;
+import p1.component.agent.memory.model.DialogueBatch;
 import p1.config.prop.AssistantProperties;
 import p1.config.prop.LockProperties;
 import p1.model.ChatLogEntity;
@@ -26,7 +27,7 @@ public class ArchivableChatMemory implements ChatMemory {
     private final AtomicReference<CompressionLease> activeCompression = new AtomicReference<>();
 
     private final MemoryAsyncCompressor compressor;
-    private final ChatMessageAppender chatMessageAppender;
+    private final ChatMemoryAppender chatMemoryAppender;
     private final RawMdService rawMdService;
     private final ChatLogRepository chatLogRepository;
 
@@ -36,14 +37,14 @@ public class ArchivableChatMemory implements ChatMemory {
 
     public ArchivableChatMemory(String sessionId,
                                 MemoryAsyncCompressor compressor,
-                                ChatMessageAppender chatMessageAppender,
+                                ChatMemoryAppender chatMemoryAppender,
                                 RawMdService rawMdService,
                                 AssistantProperties assistantProperties,
                                 LockProperties lockProperties,
                                 ChatLogRepository chatLogRepository) {
         this.sessionId = sessionId;
         this.compressor = compressor;
-        this.chatMessageAppender = chatMessageAppender;
+        this.chatMemoryAppender = chatMemoryAppender;
         this.rawMdService = rawMdService;
         this.triggerThreshold = assistantProperties.getChatMemory().getTriggerCompressThreshold();
         this.compressCount = assistantProperties.getChatMemory().getCompressCount();
@@ -78,7 +79,7 @@ public class ArchivableChatMemory implements ChatMemory {
         }
 
         // markdown负责持久化，内存窗口给当前对话提供上下文。
-        chatMessageAppender.appendToRaw(sessionId, message);
+        chatMemoryAppender.appendToRaw(sessionId, message);
         contextWindow.add(message);
 
         compressMemory(isFinalTurnMessage);
@@ -104,11 +105,11 @@ public class ArchivableChatMemory implements ChatMemory {
         log.info("[记忆压缩触发] 准备压缩，sessionId={}，leaseId={}，windowCount={}，collectingCount={}，threshold={}，hasProcessingBatch={}",
                 sessionId, lease.leaseId(), windowCount, collectingCount, triggerThreshold, hasProcessingBatch);
 
-        ChatMessageAppender.DialogueBatch processingBatch;
+        DialogueBatch processingBatch;
         try {
             processingBatch = rawMdService
                     .promoteCollectingToProcessingIfReady(sessionId, triggerThreshold, compressCount)
-                    .map(batch -> new ChatMessageAppender.DialogueBatch(batch.id(), batch.sessionId(), batch.messages()))
+                    .map(batch -> new DialogueBatch(batch.id(), batch.sessionId(), batch.messages()))
                     .orElse(null);
         } catch (Exception e) {
             log.error("[记忆压缩失败] 准备 processing 批次时发生异常，sessionId={}，leaseId={}",
@@ -141,7 +142,7 @@ public class ArchivableChatMemory implements ChatMemory {
         });
     }
 
-    private void onCompressionSuccess(CompressionLease lease, ChatMessageAppender.DialogueBatch processingBatch) {
+    private void onCompressionSuccess(CompressionLease lease, DialogueBatch processingBatch) {
         if (!isLeaseCurrent(lease)) {
             log.warn("[记忆压缩] 收到过期成功回调，忽略后续收尾，sessionId={}，leaseId={}", sessionId, lease.leaseId());
             return;
@@ -161,7 +162,7 @@ public class ArchivableChatMemory implements ChatMemory {
         }
     }
 
-    private int removeProcessedMessagesFromWindow(ChatMessageAppender.DialogueBatch processingBatch) {
+    private int removeProcessedMessagesFromWindow(DialogueBatch processingBatch) {
         int targetCount = processingBatch.messages().size();
         int removedCount = 0;
 

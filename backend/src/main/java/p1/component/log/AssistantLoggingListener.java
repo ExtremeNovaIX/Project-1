@@ -96,7 +96,7 @@ public class AssistantLoggingListener implements ChatModelListener {
             return "";
         }
 
-        for (int i = request.messages().size() - 1; i >= 0; i--) {
+        for (int i = request.messages().size() - 2; i >= 0; i--) {
             ChatMessage message = request.messages().get(i);
             if (message instanceof UserMessage userMessage) {
                 String[] parts = userMessage.singleText().split("user:");

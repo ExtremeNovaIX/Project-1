@@ -23,6 +23,20 @@ ApplicationWindow {
         return Math.round(value * uiScale)
     }
 
+    readonly property bool chineseUi: frontendSettings.languageId === "zh"
+
+    function trText(en, zh) {
+        return chineseUi ? zh : en
+    }
+
+    function languageOptions() {
+        return chineseUi ? ["English", "中文"] : ["English", "Chinese"]
+    }
+
+    function themeOptions() {
+        return chineseUi ? ["跟随系统", "浅色", "深色"] : ["System", "Light", "Dark"]
+    }
+
     SystemPalette {
         id: systemPalette
         colorGroup: SystemPalette.Active
@@ -91,7 +105,8 @@ ApplicationWindow {
             font.weight: button.font.weight
             font.capitalization: button.font.capitalization
             font.letterSpacing: sp(1)
-            color: button.primary ? paletteToken.accentText : (button.down || button.hovered ? paletteToken.inkInverse : paletteToken.text)
+            color: button.primary ? (button.down || button.hovered ? paletteToken.accentText : paletteToken.inkInverse)
+                                  : (button.down || button.hovered ? paletteToken.inkInverse : paletteToken.text)
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
             elide: Text.ElideRight
@@ -99,7 +114,7 @@ ApplicationWindow {
         background: Rectangle {
             radius: 0
             color: button.primary ? (button.down || button.hovered ? paletteToken.accent : paletteToken.ink)
-                                  : (button.down || button.hovered ? paletteToken.ink : "transparent")
+                                  : (button.down || button.hovered ? paletteToken.ink : paletteToken.card)
             border.color: paletteToken.border
             border.width: 2
         }
@@ -239,6 +254,55 @@ ApplicationWindow {
         }
     }
 
+    component SettingSection: Rectangle {
+        id: section
+        property string title: ""
+        property string description: ""
+        default property alias content: sectionBody.data
+        Layout.fillWidth: true
+        implicitHeight: sectionColumn.implicitHeight + sp(28)
+        radius: sp(8)
+        color: paletteToken.card
+        border.color: paletteToken.hairline
+        border.width: 1
+
+        ColumnLayout {
+            id: sectionColumn
+            anchors.fill: parent
+            anchors.margins: sp(14)
+            spacing: sp(12)
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: sp(4)
+
+                Label {
+                    Layout.fillWidth: true
+                    text: section.title
+                    color: paletteToken.text
+                    font.pixelSize: sp(16)
+                    font.weight: Font.Black
+                    elide: Text.ElideRight
+                }
+
+                Label {
+                    Layout.fillWidth: true
+                    visible: section.description.length > 0
+                    text: section.description
+                    color: paletteToken.muted
+                    wrapMode: Text.WordWrap
+                    font.pixelSize: sp(12)
+                }
+            }
+
+            ColumnLayout {
+                id: sectionBody
+                Layout.fillWidth: true
+                spacing: sp(10)
+            }
+        }
+    }
+
     component GridOverlay: Canvas {
         opacity: darkMode ? 0.45 : 0.7
         onPaint: {
@@ -299,7 +363,7 @@ ApplicationWindow {
         }
         background: Rectangle {
             color: titleButton.closeButton && titleButton.hovered ? "#d83b3b"
-                  : (titleButton.down || titleButton.hovered ? paletteToken.ink : "transparent")
+                  : (titleButton.down || titleButton.hovered ? paletteToken.ink : paletteToken.panel)
         }
     }
 
@@ -419,7 +483,7 @@ ApplicationWindow {
 
                     Label {
                         Layout.fillWidth: true
-                        text: "Session: " + frontendSettings.sessionId + "    Backend: " + frontendSettings.backendBaseUrl
+                        text: trText("Session: ", "会话：") + frontendSettings.sessionId + "    " + trText("Backend: ", "后端：") + frontendSettings.backendBaseUrl
                         color: paletteToken.muted
                         font.pixelSize: sp(12)
                         elide: Text.ElideRight
@@ -427,12 +491,12 @@ ApplicationWindow {
                 }
 
                 AppButton {
-                    text: "Reload"
+                    text: trText("Reload", "重载")
                     onClicked: characterCatalog.reload()
                 }
 
                 AppButton {
-                    text: "Settings"
+                    text: trText("Settings", "设置")
                     primary: true
                     onClicked: settingsDialog.open()
                 }
@@ -443,67 +507,365 @@ ApplicationWindow {
     Dialog {
         id: settingsDialog
         modal: true
-        width: Math.min(window.width - sp(48), sp(620))
+        width: Math.min(window.width - sp(48), sp(760))
         height: Math.min(window.height - sp(48), sp(760))
-        padding: sp(22)
+        padding: sp(18)
         anchors.centerIn: Overlay.overlay
 
         background: Rectangle {
             color: paletteToken.panel
-            radius: sp(12)
+            radius: sp(10)
             border.color: paletteToken.border
+            border.width: 2
             layer.enabled: true
         }
 
-        contentItem: ScrollView {
-            clip: true
-
-            ColumnLayout {
-                width: settingsDialog.availableWidth
-                spacing: sp(14)
-
-            Label {
-                text: "Local Settings"
-                color: paletteToken.text
-                font.pixelSize: sp(22)
-                font.bold: true
-            }
-
-            Label {
-                Layout.fillWidth: true
-                text: "Appearance follows the system by default. Choose a fixed theme only when you need one."
-                color: paletteToken.muted
-                wrapMode: Text.WordWrap
-                font.pixelSize: sp(12)
-            }
+        contentItem: ColumnLayout {
+            spacing: sp(14)
 
             RowLayout {
                 Layout.fillWidth: true
                 spacing: sp(12)
 
-                Label {
-                    Layout.preferredWidth: sp(118)
-                    text: "Theme"
-                    color: paletteToken.text
-                    font.pixelSize: sp(14)
-                }
-
-                AppComboBox {
-                    id: themeCombo
+                ColumnLayout {
                     Layout.fillWidth: true
-                    model: ["System", "Light", "Dark"]
+                    Layout.minimumWidth: 0
+                    spacing: sp(3)
 
-                    function syncSelection() {
-                        currentIndex = frontendSettings.themeId === "light" ? 1 : (frontendSettings.themeId === "dark" ? 2 : 0)
+                    Label {
+                        Layout.fillWidth: true
+                        text: trText("Local Settings", "本地设置")
+                        color: paletteToken.text
+                        font.pixelSize: sp(22)
+                        font.weight: Font.Black
+                        elide: Text.ElideRight
                     }
 
-                    Component.onCompleted: syncSelection()
-                    onActivated: frontendSettings.themeId = currentIndex === 1 ? "light" : (currentIndex === 2 ? "dark" : "system")
+                    Label {
+                        Layout.fillWidth: true
+                        text: trText("Changes are saved locally and apply immediately where possible.", "设置会保存在本机，支持的项目会立即生效。")
+                        color: paletteToken.muted
+                        wrapMode: Text.WordWrap
+                        font.pixelSize: sp(12)
+                    }
+                }
 
-                    Connections {
-                        target: frontendSettings
-                        function onSettingsChanged() {
-                            themeCombo.syncSelection()
+                AppButton {
+                    text: trText("Reset", "重置")
+                    onClicked: frontendSettings.reset()
+                }
+            }
+
+            ScrollView {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+
+                ColumnLayout {
+                    width: settingsDialog.availableWidth - sp(6)
+                    spacing: sp(12)
+
+                    SettingSection {
+                        title: trText("Appearance", "外观")
+                        description: trText("Tune the interface language, theme, and overall scale.", "调整界面语言、主题和整体缩放。")
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: sp(12)
+
+                            Label {
+                                Layout.preferredWidth: sp(132)
+                                text: trText("Language", "语言")
+                                color: paletteToken.text
+                                font.pixelSize: sp(14)
+                            }
+
+                            AppComboBox {
+                                id: languageCombo
+                                Layout.fillWidth: true
+                                model: languageOptions()
+
+                                function syncSelection() {
+                                    currentIndex = frontendSettings.languageId === "zh" ? 1 : 0
+                                }
+
+                                Component.onCompleted: syncSelection()
+                                onActivated: frontendSettings.languageId = currentIndex === 1 ? "zh" : "en"
+
+                                Connections {
+                                    target: frontendSettings
+                                    function onSettingsChanged() {
+                                        languageCombo.syncSelection()
+                                    }
+                                }
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: sp(12)
+
+                            Label {
+                                Layout.preferredWidth: sp(132)
+                                text: trText("Theme", "主题")
+                                color: paletteToken.text
+                                font.pixelSize: sp(14)
+                            }
+
+                            AppComboBox {
+                                id: themeCombo
+                                Layout.fillWidth: true
+                                model: themeOptions()
+
+                                function syncSelection() {
+                                    currentIndex = frontendSettings.themeId === "light" ? 1 : (frontendSettings.themeId === "dark" ? 2 : 0)
+                                }
+
+                                Component.onCompleted: syncSelection()
+                                onActivated: frontendSettings.themeId = currentIndex === 1 ? "light" : (currentIndex === 2 ? "dark" : "system")
+
+                                Connections {
+                                    target: frontendSettings
+                                    function onSettingsChanged() {
+                                        themeCombo.syncSelection()
+                                    }
+                                }
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: sp(12)
+
+                            Label {
+                                Layout.preferredWidth: sp(132)
+                                text: trText("UI Scale", "界面缩放")
+                                color: paletteToken.text
+                                font.pixelSize: sp(14)
+                            }
+
+                            AppSlider {
+                                Layout.fillWidth: true
+                                from: 80
+                                to: 140
+                                stepSize: 5
+                                value: frontendSettings.uiScalePercent
+                                onMoved: frontendSettings.uiScalePercent = Math.round(value / 5) * 5
+                            }
+
+                            Label {
+                                Layout.preferredWidth: sp(54)
+                                text: frontendSettings.uiScalePercent + "%"
+                                color: paletteToken.text
+                                horizontalAlignment: Text.AlignRight
+                                font.pixelSize: sp(14)
+                            }
+                        }
+                    }
+
+                    SettingSection {
+                        title: trText("Session", "会话")
+                        description: trText("Identify the current workspace, user, and character.", "设置当前工作区、操作者和角色。")
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: sp(12)
+
+                            Label { Layout.preferredWidth: sp(132); text: trText("Session ID", "会话 ID"); color: paletteToken.text; font.pixelSize: sp(14) }
+                            SettingField {
+                                placeholderText: trText("Session ID", "会话 ID")
+                                text: frontendSettings.sessionId
+                                onEditingFinished: frontendSettings.sessionId = text
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: sp(12)
+
+                            Label { Layout.preferredWidth: sp(132); text: trText("Workspace", "工作区"); color: paletteToken.text; font.pixelSize: sp(14) }
+                            SettingField {
+                                placeholderText: trText("Workspace Name", "工作区名称")
+                                text: frontendSettings.workspaceName
+                                onEditingFinished: frontendSettings.workspaceName = text
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: sp(12)
+
+                            Label { Layout.preferredWidth: sp(132); text: trText("Operator", "操作者"); color: paletteToken.text; font.pixelSize: sp(14) }
+                            SettingField {
+                                placeholderText: trText("Operator Name", "操作者名称")
+                                text: frontendSettings.operatorName
+                                onEditingFinished: frontendSettings.operatorName = text
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: sp(12)
+
+                            Label { Layout.preferredWidth: sp(132); text: trText("Character", "角色"); color: paletteToken.text; font.pixelSize: sp(14) }
+                            AppComboBox {
+                                id: characterCombo
+                                Layout.fillWidth: true
+                                model: characterCatalog.characterNames()
+
+                                function syncSelection() {
+                                    const names = characterCatalog.characterNames()
+                                    const index = names.indexOf(frontendSettings.characterName)
+                                    currentIndex = index >= 0 ? index : (names.length > 0 ? 0 : -1)
+                                }
+
+                                Component.onCompleted: syncSelection()
+                                onActivated: {
+                                    frontendSettings.characterName = currentText
+                                    chatSession.selectCharacter(currentText)
+                                }
+
+                                Connections {
+                                    target: frontendSettings
+                                    function onSettingsChanged() {
+                                        characterCombo.syncSelection()
+                                    }
+                                }
+
+                                Connections {
+                                    target: characterCatalog
+                                    function onCharactersChanged() {
+                                        characterCombo.syncSelection()
+                                    }
+                                }
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: sp(12)
+
+                            Label {
+                                Layout.preferredWidth: sp(132)
+                                text: trText("Reply Delay", "回复延迟")
+                                color: paletteToken.text
+                                font.pixelSize: sp(14)
+                            }
+
+                            AppSlider {
+                                Layout.fillWidth: true
+                                from: 0
+                                to: 3000
+                                stepSize: 50
+                                value: frontendSettings.responseDelayMs
+                                onMoved: frontendSettings.responseDelayMs = Math.round(value)
+                            }
+
+                            Label {
+                                Layout.preferredWidth: sp(72)
+                                text: Math.round(frontendSettings.responseDelayMs) + " ms"
+                                color: paletteToken.text
+                                horizontalAlignment: Text.AlignRight
+                                font.pixelSize: sp(14)
+                            }
+                        }
+                    }
+
+                    SettingSection {
+                        title: trText("Backend", "后端")
+                        description: trText("Configure the local service endpoint used by chat requests.", "配置聊天请求使用的本地服务地址。")
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: sp(12)
+
+                            Label { Layout.preferredWidth: sp(132); text: trText("Backend URL", "后端地址"); color: paletteToken.text; font.pixelSize: sp(14) }
+                            SettingField {
+                                placeholderText: "http://localhost:8080"
+                                text: frontendSettings.backendBaseUrl
+                                onEditingFinished: frontendSettings.backendBaseUrl = text
+                            }
+                        }
+                    }
+
+                    SettingSection {
+                        title: trText("Model Overrides", "模型覆盖")
+                        description: trText("Optional runtime model settings. Leave empty to use backend defaults.", "可选的运行时模型设置，留空则使用后端默认值。")
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: sp(12)
+
+                            Label { Layout.preferredWidth: sp(132); text: trText("AI Base URL", "AI 地址"); color: paletteToken.text; font.pixelSize: sp(14) }
+                            SettingField {
+                                placeholderText: trText("Optional", "可选")
+                                text: frontendSettings.aiBaseUrl
+                                onEditingFinished: frontendSettings.aiBaseUrl = text
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: sp(12)
+
+                            Label { Layout.preferredWidth: sp(132); text: trText("AI API Key", "AI 密钥"); color: paletteToken.text; font.pixelSize: sp(14) }
+                            SettingField {
+                                placeholderText: trText("AI API Key", "AI API 密钥")
+                                text: frontendSettings.aiApiKey
+                                echoMode: TextInput.Password
+                                passwordCharacter: "*"
+                                onEditingFinished: frontendSettings.aiApiKey = text
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: sp(12)
+
+                            Label { Layout.preferredWidth: sp(132); text: trText("AI Model", "AI 模型"); color: paletteToken.text; font.pixelSize: sp(14) }
+                            SettingField {
+                                placeholderText: trText("Model name", "模型名称")
+                                text: frontendSettings.aiModelName
+                                onEditingFinished: frontendSettings.aiModelName = text
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: sp(12)
+
+                            Label { Layout.preferredWidth: sp(132); text: trText("Embedding URL", "向量地址"); color: paletteToken.text; font.pixelSize: sp(14) }
+                            SettingField {
+                                placeholderText: trText("Optional", "可选")
+                                text: frontendSettings.embeddingBaseUrl
+                                onEditingFinished: frontendSettings.embeddingBaseUrl = text
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: sp(12)
+
+                            Label { Layout.preferredWidth: sp(132); text: trText("Embedding Key", "向量密钥"); color: paletteToken.text; font.pixelSize: sp(14) }
+                            SettingField {
+                                placeholderText: trText("Embedding API Key", "向量 API 密钥")
+                                text: frontendSettings.embeddingApiKey
+                                echoMode: TextInput.Password
+                                passwordCharacter: "*"
+                                onEditingFinished: frontendSettings.embeddingApiKey = text
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: sp(12)
+
+                            Label { Layout.preferredWidth: sp(132); text: trText("Embedding Model", "向量模型"); color: paletteToken.text; font.pixelSize: sp(14) }
+                            SettingField {
+                                placeholderText: trText("Model name", "模型名称")
+                                text: frontendSettings.embeddingModelName
+                                onEditingFinished: frontendSettings.embeddingModelName = text
+                            }
                         }
                     }
                 }
@@ -511,178 +873,17 @@ ApplicationWindow {
 
             RowLayout {
                 Layout.fillWidth: true
-                spacing: sp(12)
-
-                Label {
-                    Layout.preferredWidth: sp(118)
-                    text: "UI Scale"
-                    color: paletteToken.text
-                    font.pixelSize: sp(14)
-                }
-
-                AppSlider {
-                    id: scaleSlider
-                    Layout.fillWidth: true
-                    from: 80
-                    to: 140
-                    stepSize: 5
-                    value: frontendSettings.uiScalePercent
-                    onMoved: frontendSettings.uiScalePercent = Math.round(value / 5) * 5
-                }
-
-                Label {
-                    Layout.preferredWidth: sp(54)
-                    text: frontendSettings.uiScalePercent + "%"
-                    color: paletteToken.text
-                    horizontalAlignment: Text.AlignRight
-                    font.pixelSize: sp(14)
-                }
-            }
-
-            SettingField {
-                placeholderText: "Backend URL"
-                text: frontendSettings.backendBaseUrl
-                onEditingFinished: frontendSettings.backendBaseUrl = text
-            }
-
-            SettingField {
-                placeholderText: "AI Base URL (optional)"
-                text: frontendSettings.aiBaseUrl
-                onEditingFinished: frontendSettings.aiBaseUrl = text
-            }
-
-            SettingField {
-                placeholderText: "AI API Key"
-                text: frontendSettings.aiApiKey
-                echoMode: TextInput.Password
-                passwordCharacter: "*"
-                onEditingFinished: frontendSettings.aiApiKey = text
-            }
-
-            SettingField {
-                placeholderText: "AI Model Name"
-                text: frontendSettings.aiModelName
-                onEditingFinished: frontendSettings.aiModelName = text
-            }
-
-            SettingField {
-                placeholderText: "Embedding Base URL (optional)"
-                text: frontendSettings.embeddingBaseUrl
-                onEditingFinished: frontendSettings.embeddingBaseUrl = text
-            }
-
-            SettingField {
-                placeholderText: "Embedding API Key"
-                text: frontendSettings.embeddingApiKey
-                echoMode: TextInput.Password
-                passwordCharacter: "*"
-                onEditingFinished: frontendSettings.embeddingApiKey = text
-            }
-
-            SettingField {
-                placeholderText: "Embedding Model Name"
-                text: frontendSettings.embeddingModelName
-                onEditingFinished: frontendSettings.embeddingModelName = text
-            }
-
-            SettingField {
-                placeholderText: "Session ID"
-                text: frontendSettings.sessionId
-                onEditingFinished: frontendSettings.sessionId = text
-            }
-
-            SettingField {
-                placeholderText: "Workspace Name"
-                text: frontendSettings.workspaceName
-                onEditingFinished: frontendSettings.workspaceName = text
-            }
-
-            SettingField {
-                placeholderText: "Operator Name"
-                text: frontendSettings.operatorName
-                onEditingFinished: frontendSettings.operatorName = text
-            }
-
-            AppComboBox {
-                id: characterCombo
-                Layout.fillWidth: true
-                model: characterCatalog.characterNames()
-
-                function syncSelection() {
-                    const names = characterCatalog.characterNames()
-                    const index = names.indexOf(frontendSettings.characterName)
-                    currentIndex = index >= 0 ? index : (names.length > 0 ? 0 : -1)
-                }
-
-                Component.onCompleted: syncSelection()
-                onActivated: {
-                    frontendSettings.characterName = currentText
-                    chatSession.selectCharacter(currentText)
-                }
-
-                Connections {
-                    target: frontendSettings
-                    function onSettingsChanged() {
-                        characterCombo.syncSelection()
-                    }
-                }
-
-                Connections {
-                    target: characterCatalog
-                    function onCharactersChanged() {
-                        characterCombo.syncSelection()
-                    }
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: sp(12)
-
-                Label {
-                    Layout.preferredWidth: sp(118)
-                    text: "Reply Delay"
-                    color: paletteToken.text
-                    font.pixelSize: sp(14)
-                }
-
-                AppSlider {
-                    Layout.fillWidth: true
-                    from: 0
-                    to: 3000
-                    stepSize: 50
-                    value: frontendSettings.responseDelayMs
-                    onMoved: frontendSettings.responseDelayMs = Math.round(value)
-                }
-
-                Label {
-                    Layout.preferredWidth: sp(72)
-                    text: Math.round(frontendSettings.responseDelayMs) + " ms"
-                    color: paletteToken.text
-                    horizontalAlignment: Text.AlignRight
-                    font.pixelSize: sp(14)
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-
-                AppButton {
-                    text: "Reset"
-                    onClicked: frontendSettings.reset()
-                }
 
                 Item { Layout.fillWidth: true }
 
                 AppButton {
-                    text: "Close"
+                    text: trText("Close", "关闭")
                     primary: true
                     onClicked: {
                         frontendSettings.save()
                         settingsDialog.close()
                     }
                 }
-            }
             }
         }
     }
@@ -712,7 +913,7 @@ ApplicationWindow {
 
                 Label {
                     Layout.fillWidth: true
-                    text: frontendSettings.characterName.length > 0 ? frontendSettings.characterName : "No Character Selected"
+                    text: frontendSettings.characterName.length > 0 ? frontendSettings.characterName : trText("No Character Selected", "未选择角色")
                     color: paletteToken.text
                     font.pixelSize: sp(24)
                     font.weight: Font.Black
@@ -782,7 +983,7 @@ ApplicationWindow {
                             Text {
                                 anchors.fill: parent
                                 visible: chatSession.activeCharacterImagePath.length === 0
-                                text: "No portrait asset"
+                                text: trText("No portrait asset", "没有角色立绘")
                                 color: paletteToken.faint
                                 horizontalAlignment: Text.AlignHCenter
                                 verticalAlignment: Text.AlignVCenter
@@ -792,7 +993,7 @@ ApplicationWindow {
 
                         Label {
                             Layout.fillWidth: true
-                            text: chatSession.activeEmotion.length > 0 ? ("Emotion: " + chatSession.activeEmotion) : "Emotion: default"
+                            text: chatSession.activeEmotion.length > 0 ? (trText("Emotion: ", "情绪：") + chatSession.activeEmotion) : trText("Emotion: default", "情绪：默认")
                             color: paletteToken.muted
                             font.pixelSize: sp(13)
                             font.capitalization: Font.AllUppercase
@@ -822,7 +1023,7 @@ ApplicationWindow {
                             Label {
                                 Layout.fillWidth: true
                                 Layout.minimumWidth: 0
-                                text: "Character Directory"
+                                text: trText("Character Directory", "角色目录")
                                 color: paletteToken.inkInverse
                                 font.weight: Font.Black
                                 font.pixelSize: sp(14)
@@ -831,7 +1032,7 @@ ApplicationWindow {
                             }
 
                             AppButton {
-                                text: "Open"
+                                text: trText("Open", "打开")
                                 enabled: characterCatalog.charactersPath.length > 0
                                 onClicked: characterCatalog.openCharactersFolder()
                             }
@@ -839,7 +1040,7 @@ ApplicationWindow {
 
                         Label {
                             Layout.fillWidth: true
-                            text: characterCatalog.charactersPath.length > 0 ? characterCatalog.charactersPath : "Not found"
+                            text: characterCatalog.charactersPath.length > 0 ? characterCatalog.charactersPath : trText("Not found", "未找到")
                             color: darkMode ? paletteToken.faint : "#ffffffaa"
                             wrapMode: Text.WrapAnywhere
                             font.pixelSize: sp(12)
@@ -888,7 +1089,7 @@ ApplicationWindow {
                         Label {
                             Layout.fillWidth: true
                             Layout.minimumWidth: 0
-                            text: chatSession.statusText.length > 0 ? chatSession.statusText : "Ready."
+                            text: chatSession.statusText.length > 0 ? chatSession.statusText : trText("Ready.", "就绪。")
                             color: chatSession.busy ? paletteToken.warn : paletteToken.muted
                             elide: Text.ElideRight
                             verticalAlignment: Text.AlignVCenter
@@ -897,13 +1098,13 @@ ApplicationWindow {
                         }
 
                         AppButton {
-                            text: "Story Replay"
+                            text: trText("Story Replay", "故事回放")
                             enabled: !chatSession.busy
                             onClicked: chatSession.startStoryReplay()
                         }
 
                         AppButton {
-                            text: "Clear"
+                            text: trText("Clear", "清空")
                             onClicked: chatSession.clearMessages()
                         }
                     }
@@ -1004,7 +1205,7 @@ ApplicationWindow {
                             id: inputArea
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            placeholderText: "Type a message..."
+                            placeholderText: trText("Type a message...", "输入消息...")
                             wrapMode: TextEdit.Wrap
                             color: paletteToken.text
                             placeholderTextColor: paletteToken.faint
@@ -1044,7 +1245,7 @@ ApplicationWindow {
                             Label {
                                 Layout.fillWidth: true
                                 Layout.minimumWidth: 0
-                                text: chatSession.busy ? "Assistant is replying..." : "Enter to send, Shift+Enter for newline"
+                                text: chatSession.busy ? trText("Assistant is replying...", "助手正在回复...") : trText("Enter to send, Shift+Enter for newline", "Enter 发送，Shift+Enter 换行")
                                 color: paletteToken.muted
                                 font.pixelSize: sp(12)
                                 font.capitalization: Font.AllUppercase
@@ -1054,7 +1255,7 @@ ApplicationWindow {
                             AppButton {
                                 enabled: !chatSession.busy
                                 primary: true
-                                text: chatSession.busy ? "Sending..." : "Send"
+                                text: chatSession.busy ? trText("Sending...", "发送中...") : trText("Send", "发送")
                                 onClicked: inputArea.submit()
                             }
                         }

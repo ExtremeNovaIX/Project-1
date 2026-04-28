@@ -31,6 +31,10 @@ QString FrontendSettings::themeId() const {
     return m_themeId;
 }
 
+QString FrontendSettings::languageId() const {
+    return m_languageId;
+}
+
 QString FrontendSettings::characterName() const {
     return m_characterName;
 }
@@ -98,6 +102,7 @@ QString FrontendSettings::embeddingModelName() const {
 void FrontendSettings::reset() {
     // reset 只改内存中的当前值；真正写入磁盘由 save() 完成。
     // reset only changes in-memory values; save() is responsible for writing to disk.
+    m_languageId = QStringLiteral("en");
     m_themeId = QStringLiteral("system");
     m_characterName.clear();
     m_sessionId = QStringLiteral("qt-session");
@@ -122,6 +127,7 @@ void FrontendSettings::save() {
     // QSettings 会在不同平台使用不同后端：Windows 通常是注册表，macOS/Linux 使用配置文件。
     // QSettings uses platform-native storage: usually Registry on Windows and config files on macOS/Linux.
     QSettings settings;
+    settings.setValue(QStringLiteral("languageId"), m_languageId);
     settings.setValue(QStringLiteral("themeId"), m_themeId);
     settings.setValue(QStringLiteral("characterName"), m_characterName);
     settings.setValue(QStringLiteral("sessionId"), m_sessionId);
@@ -139,6 +145,18 @@ void FrontendSettings::save() {
     settings.setValue(QStringLiteral("embeddingBaseUrl"), m_embeddingBaseUrl);
     settings.setValue(QStringLiteral("embeddingApiKey"), m_embeddingApiKey);
     settings.setValue(QStringLiteral("embeddingModelName"), m_embeddingModelName);
+}
+
+void FrontendSettings::setLanguageId(const QString &value) {
+    QString normalized = value.trimmed().toLower();
+    if (normalized != QStringLiteral("zh")) {
+        normalized = QStringLiteral("en");
+    }
+    if (m_languageId == normalized) {
+        return;
+    }
+    m_languageId = normalized;
+    emit settingsChanged();
 }
 
 void FrontendSettings::setThemeId(const QString &value) {
@@ -319,6 +337,7 @@ void FrontendSettings::load() {
     // 通过 setter 读取配置，这样读取到的旧值也会走同一套默认值和范围校验逻辑。
     // Load through setters so old saved values still pass through defaulting and validation logic.
     QSettings settings;
+    setLanguageId(settings.value(QStringLiteral("languageId"), m_languageId).toString());
     setThemeId(settings.value(QStringLiteral("themeId"), m_themeId).toString());
     setCharacterName(settings.value(QStringLiteral("characterName"), m_characterName).toString());
     setSessionId(settings.value(QStringLiteral("sessionId"), m_sessionId).toString());

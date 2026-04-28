@@ -10,6 +10,7 @@
 // Q_PROPERTY exposes C++ properties to QML and supports binding, reading, writing, and change notifications.
 class FrontendSettings final : public QObject {
     Q_OBJECT
+    Q_PROPERTY(QString languageId READ languageId WRITE setLanguageId NOTIFY settingsChanged)
     Q_PROPERTY(QString themeId READ themeId WRITE setThemeId NOTIFY settingsChanged)
     Q_PROPERTY(QString characterName READ characterName WRITE setCharacterName NOTIFY settingsChanged)
     Q_PROPERTY(QString sessionId READ sessionId WRITE setSessionId NOTIFY settingsChanged)
@@ -33,6 +34,7 @@ public:
 
     // READ 访问器：QML 读取 frontendSettings.xxx 时会调用这些函数。
     // READ accessors: QML calls these when reading frontendSettings.xxx.
+    QString languageId() const;
     QString themeId() const;
     QString characterName() const;
     QString sessionId() const;
@@ -59,6 +61,7 @@ public:
 public slots:
     // WRITE setter 同时也是 slot；QML 赋值和 C++ connect 都可以调用。
     // WRITE setters are also slots; they can be called by QML assignment or C++ connect.
+    void setLanguageId(const QString &value);
     void setThemeId(const QString &value);
     void setCharacterName(const QString &value);
     void setSessionId(const QString &value);
@@ -89,6 +92,7 @@ private:
 
     // 成员变量保存当前值；m_ 前缀是 Qt/C++ 项目常见命名习惯。
     // Member variables store current values; the m_ prefix is common in Qt/C++ projects.
+    QString m_languageId;
     QString m_themeId;
     QString m_characterName;
     QString m_sessionId;

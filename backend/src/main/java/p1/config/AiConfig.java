@@ -2,6 +2,7 @@ package p1.config;
 
 import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
+import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -15,20 +16,21 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.util.StringUtils;
-import p1.component.ai.assistant.FrontendAssistant;
-import p1.component.ai.assistant.FrontendChatRequestAugmentor;
-import p1.component.ai.assistant.TestAssistant;
-import p1.component.ai.memory.ArchivableChatMemory;
-import p1.component.ai.memory.ChatMessageAppender;
-import p1.component.ai.memory.MemoryAsyncCompressor;
-import p1.component.ai.service.FactEvaluatorAiService;
-import p1.component.ai.service.FactExtractionAiService;
-import p1.component.ai.tools.MemorySearchTools;
+import p1.component.agent.aiservice.TestAiService;
+import p1.component.agent.context.RpRequestTimeAppender;
+import p1.component.agent.core.RpAgent;
+import p1.component.agent.memory.ArchivableChatMemory;
+import p1.component.agent.memory.ChatMemoryAppender;
+import p1.component.agent.memory.FactEvaluatorAiService;
+import p1.component.agent.memory.FactExtractionAiService;
+import p1.component.agent.memory.MemoryAsyncCompressor;
+import p1.component.agent.task.checker.TaskCheckerAiService;
+import p1.component.agent.tools.CallSolverTool;
 import p1.component.log.AiServiceLoggingListener;
 import p1.component.log.AssistantLoggingListener;
 import p1.config.prop.AssistantProperties;
 import p1.config.prop.LockProperties;
-import p1.repo.db.ChatLogRepository;
+import p1.service.ChatLogRepository;
 import p1.service.markdown.RawMdService;
 import p1.utils.SessionUtil;
 
@@ -55,8 +57,8 @@ public class AiConfig {
         return buildChatModel(chatModelConfig, assistantLoggingListener, null);
     }
 
-    @Bean(name = "localChatModel")
-    public ChatModel localChatModel() {
+    @Bean(name = "rpChatModel")
+    public ChatModel rpChatModel() {
         AssistantProperties.ChatModelConfig chatModelConfig = props.activeChatModel();
         return buildChatModel(chatModelConfig, assistantLoggingListener, 0.8);
     }
@@ -67,6 +69,12 @@ public class AiConfig {
         return buildChatModel(config, aiServiceLoggingListener, 0.0);
     }
 
+    @Bean(name = "supervisorChatModel")
+    public ChatModel supervisorChatModel() {
+        AssistantProperties.ChatModelConfig config = props.activeChatModel();
+        return buildChatModel(config, aiServiceLoggingListener, 0.0, true);
+    }
+
     @Bean(name = "testChatModel")
     public ChatModel testChatModel() {
         AssistantProperties.ChatModelConfig chatModelConfig = props.getTestAi().getChatModel();
@@ -74,22 +82,29 @@ public class AiConfig {
     }
 
     @Bean
-    public FrontendAssistant frontendAssistant(@Qualifier("localChatModel") ChatModel chatModel,
-                                               ChatMemoryProvider chatMemoryProvider,
-                                               FrontendChatRequestAugmentor frontendChatRequestAugmentor,
-                                               MemorySearchTools memorySearchTools) {
-        return AiServices.builder(FrontendAssistant.class)
+    public RpAgent rpAgent(@Qualifier("rpChatModel") ChatModel chatModel,
+                           ChatMemoryProvider chatMemoryProvider,
+                           RpRequestTimeAppender rpRequestTimeAppender,
+                           CallSolverTool callSolverTool) {
+        return AiServices.builder(RpAgent.class)
                 .chatModel(chatModel)
                 .chatMemoryProvider(chatMemoryProvider)
-                .chatRequestTransformer(frontendChatRequestAugmentor::augment)
-                .tools(memorySearchTools)
+                .chatRequestTransformer(rpRequestTimeAppender::augment)
+                .tools(callSolverTool)
                 .build();
     }
 
     @Bean
-    public TestAssistant testAssistant(@Qualifier("testChatModel") ChatModel chatModel) {
-        return AiServices.builder(TestAssistant.class)
+    public TestAiService testAssistant(@Qualifier("testChatModel") ChatModel chatModel) {
+        return AiServices.builder(TestAiService.class)
                 .chatModel(chatModel)
+                .build();
+    }
+
+    @Bean
+    public TaskCheckerAiService taskSupervisorCheckerAiService(@Qualifier("supervisorChatModel") ChatModel supervisorChatModel) {
+        return AiServices.builder(TaskCheckerAiService.class)
+                .chatModel(supervisorChatModel)
                 .build();
     }
 
@@ -109,7 +124,7 @@ public class AiConfig {
 
     @Bean
     public ChatMemoryProvider chatMemoryProvider(MemoryAsyncCompressor compressor,
-                                                 ChatMessageAppender dbAppender,
+                                                 ChatMemoryAppender dbAppender,
                                                  RawMdService rawMdService,
                                                  LockProperties lockProperties,
                                                  ChatLogRepository chatLogRepository) {
@@ -160,6 +175,14 @@ public class AiConfig {
     private ChatModel buildChatModel(AssistantProperties.ChatModelConfig config,
                                      ChatModelListener listener,
                                      Double temperature) {
+        return buildChatModel(config, listener, temperature, false);
+    }
+
+    private ChatModel buildChatModel(AssistantProperties.ChatModelConfig config,
+                                     ChatModelListener listener,
+                                     Double temperature,
+                                     boolean structuredOutputFriendly) {
+        boolean responseFormatJsonSchemaSupported = supportsResponseFormatJsonSchema(config);
         OpenAiChatModel.OpenAiChatModelBuilder builder = OpenAiChatModel.builder()
                 .baseUrl(config.getBaseUrl())
                 .modelName(config.getModelName())
@@ -169,6 +192,10 @@ public class AiConfig {
 
         if (StringUtils.hasText(config.getApiKey())) {
             builder.apiKey(config.getApiKey());
+        }
+
+        if (supportsDeepSeekThinkingToggle(config)) {
+            builder.customParameters(Map.of("thinking", Map.of("type", "disabled")));
         }
 
         if (isLocalOpenAiCompatibleEndpoint(config.getBaseUrl())) {
@@ -181,7 +208,48 @@ public class AiConfig {
         if (temperature != null) {
             builder.temperature(temperature);
         }
+        if (structuredOutputFriendly) {
+            builder.parallelToolCalls(false);
+            if (responseFormatJsonSchemaSupported) {
+                builder.supportedCapabilities(Capability.RESPONSE_FORMAT_JSON_SCHEMA)
+                        .strictJsonSchema(true);
+            }
+        }
         return builder.build();
+    }
+
+    private boolean supportsResponseFormatJsonSchema(AssistantProperties.ChatModelConfig config) {
+        String baseUrl = config.getBaseUrl();
+        if (!StringUtils.hasText(baseUrl)) {
+            return false;
+        }
+        try {
+            String host = URI.create(baseUrl).getHost();
+            if (host == null) {
+                return false;
+            }
+            String normalizedHost = host.toLowerCase();
+            return normalizedHost.endsWith("openai.com");
+        } catch (IllegalArgumentException ignored) {
+            return false;
+        }
+    }
+
+    private boolean supportsDeepSeekThinkingToggle(AssistantProperties.ChatModelConfig config) {
+        String baseUrl = config.getBaseUrl();
+        if (!StringUtils.hasText(baseUrl)) {
+            return false;
+        }
+        try {
+            String host = URI.create(baseUrl).getHost();
+            if (host == null) {
+                return false;
+            }
+            String normalizedHost = host.toLowerCase();
+            return normalizedHost.endsWith("deepseek.com");
+        } catch (IllegalArgumentException ignored) {
+            return false;
+        }
     }
 
     private boolean isLocalOpenAiCompatibleEndpoint(String baseUrl) {

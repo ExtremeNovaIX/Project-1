@@ -2,12 +2,15 @@ package p1.service;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import p1.component.agent.memory.MemoryWriteService;
 import p1.infrastructure.vector.ArchiveVectorLibrary;
 import p1.model.document.MemoryArchiveDocument;
 import p1.model.document.RecentEventGroupDocument;
-import p1.model.dto.ExtractedMemoryEventDTO;
-import p1.service.archivegraph.ArchiveGraphService;
-import p1.service.markdown.MemoryArchiveMarkdownService;
+import p1.component.agent.memory.model.ExtractedMemoryEvent;
+import p1.service.archive.ArchiveEmbeddingService;
+import p1.service.archive.graph.ArchiveGraphService;
+import p1.service.archive.graph.ArchiveLinkService;
+import p1.service.markdown.MemoryArchiveStore;
 import p1.service.markdown.RecentEventGroupMarkdownService;
 
 import java.util.List;
@@ -22,7 +25,7 @@ class MemoryWriteServiceTest {
 
     @Test
     void shouldWriteEventGroupToArchiveAndRecent24h() {
-        MemoryArchiveMarkdownService archiveService = mock(MemoryArchiveMarkdownService.class);
+        MemoryArchiveStore archiveService = mock(MemoryArchiveStore.class);
         RecentEventGroupMarkdownService recentEventGroupService = mock(RecentEventGroupMarkdownService.class);
         ArchiveLinkService archiveLinkService = mock(ArchiveLinkService.class);
         ArchiveEmbeddingService archiveEmbeddingService = mock(ArchiveEmbeddingService.class);
@@ -61,13 +64,13 @@ class MemoryWriteServiceTest {
                 archiveGraphService
         );
 
-        ExtractedMemoryEventDTO first = new ExtractedMemoryEventDTO();
+        ExtractedMemoryEvent first = new ExtractedMemoryEvent();
         first.setTopic("relationship-progress");
         first.setKeywordSummary("The user expressed stronger emotional dependence.");
         first.setNarrative("The user clearly described wanting the relationship to become closer.");
         first.setImportanceScore(8);
 
-        ExtractedMemoryEventDTO second = new ExtractedMemoryEventDTO();
+        ExtractedMemoryEvent second = new ExtractedMemoryEvent();
         second.setTopic("long-term-companionship");
         second.setKeywordSummary("The user confirmed a long-term companionship expectation.");
         second.setNarrative("The dialogue moved further toward long-term companionship and stable support.");

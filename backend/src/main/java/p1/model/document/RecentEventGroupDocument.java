@@ -2,7 +2,7 @@ package p1.model.document;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import p1.model.RecentEventGroupLinkRecord;
+import p1.component.agent.memory.model.RecentEventGroupLinkRecord;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;

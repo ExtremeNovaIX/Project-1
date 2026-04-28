@@ -1,7 +1,8 @@
 package p1.json;
 
 import org.junit.jupiter.api.Test;
-import p1.service.FactExtractionService;
+import p1.component.agent.memory.FactExtractionService;
+import p1.utils.json.TolerantJsonCodec;
 
 import static org.junit.jupiter.api.Assertions.*;
 

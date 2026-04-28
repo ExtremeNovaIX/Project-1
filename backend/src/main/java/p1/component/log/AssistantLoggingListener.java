@@ -15,7 +15,7 @@ import org.springframework.boot.ansi.AnsiColor;
 import org.springframework.boot.ansi.AnsiOutput;
 import org.springframework.boot.ansi.AnsiStyle;
 import org.springframework.stereotype.Component;
-import p1.mdc.ChatSessionMetrics;
+import p1.infrastructure.mdc.ChatSessionMetrics;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -96,7 +96,7 @@ public class AssistantLoggingListener implements ChatModelListener {
             return "";
         }
 
-        for (int i = request.messages().size() - 1; i >= 0; i--) {
+        for (int i = request.messages().size() - 2; i >= 0; i--) {
             ChatMessage message = request.messages().get(i);
             if (message instanceof UserMessage userMessage) {
                 String[] parts = userMessage.singleText().split("user:");

@@ -2,14 +2,10 @@ package p1.service.markdown;
 
 import org.junit.jupiter.api.Test;
 import p1.config.prop.LockProperties;
-import p1.model.enums.DialogueMessageRole;
-import p1.repo.markdown.RawBatchMdRepository;
-import p1.repo.markdown.RawMdRepository;
-import p1.repo.markdown.model.MarkdownDocument;
-import p1.repo.markdown.model.RawBatchDocument;
+import p1.infrastructure.markdown.assembler.RawMdAssembler;
+import p1.model.enums.MessageRole;
+import p1.infrastructure.markdown.model.RawBatchDocument;
 import p1.service.lock.SessionLockExecutor;
-import p1.service.markdown.assembler.RawBatchMdAssembler;
-import p1.service.markdown.assembler.RawMdAssembler;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -27,12 +23,11 @@ import static org.mockito.Mockito.*;
 class RawMdServiceLockTest {
 
     @Test
-    void shouldKeepLifecycleTimeNearServerNowWhenMessageCarriesFutureTimestamp() {
+    void shouldUseServerLifecycleTimeWhenAppendingMessage() {
         LockProperties lockProperties = new LockProperties();
 
-        RawMdRepository rawRepository = mock(RawMdRepository.class);
-        RawBatchMdRepository batchRepository = mock(RawBatchMdRepository.class);
-        RawBatchMdAssembler batchMapper = new RawBatchMdAssembler();
+        RawDialogueStore rawRepository = mock(RawDialogueStore.class);
+        DialogueBatchStore batchRepository = mock(DialogueBatchStore.class);
 
         when(rawRepository.relativeDailyNotePath(anyString(), any())).thenReturn("sessions/default/raw/dialogues/2026/2026-04/2026-04-20");
         doNothing().when(rawRepository).createDailyNoteIfMissing(anyString(), any(), any());
@@ -50,35 +45,33 @@ class RawMdServiceLockTest {
                 null,
                 List.of()
         );
-        when(batchRepository.findCollecting("default"))
-                .thenReturn(Optional.of(batchMapper.toMarkdown(existingCollecting)));
+        when(batchRepository.findCollecting("default")).thenReturn(Optional.of(existingCollecting));
         when(batchRepository.findProcessing("default")).thenReturn(Optional.empty());
 
         RawMdService service = new RawMdService(
                 rawRepository,
                 batchRepository,
                 new RawMdAssembler(),
-                batchMapper,
                 new SessionLockExecutor(lockProperties)
         );
 
-        LocalDateTime futureMessageTime = LocalDateTime.now().plusDays(1);
         LocalDateTime startedAt = LocalDateTime.now();
-        service.appendRawMessage("default", DialogueMessageRole.USER, "future timestamp payload");
+        service.appendRawMessage("default", MessageRole.USER, "future timestamp payload");
         LocalDateTime finishedAt = LocalDateTime.now();
 
-        var collectingCaptor = forClass(MarkdownDocument.class);
+        var collectingCaptor = forClass(RawBatchDocument.class);
         verify(batchRepository).saveCollecting(eq("default"), collectingCaptor.capture());
         verify(batchRepository, never()).saveProcessing(anyString(), any());
 
-        RawBatchDocument savedCollecting = batchMapper.fromMarkdown(collectingCaptor.getValue());
+        RawBatchDocument savedCollecting = collectingCaptor.getValue();
         assertEquals("batch-existing", savedCollecting.id());
         assertEquals(existingCreatedAt, savedCollecting.createdAt());
         assertNotNull(savedCollecting.updatedAt());
         assertFalse(savedCollecting.updatedAt().isBefore(startedAt.minusSeconds(1)));
         assertFalse(savedCollecting.updatedAt().isAfter(finishedAt.plusSeconds(1)));
         assertEquals(1, savedCollecting.messageCount());
-        assertEquals(futureMessageTime, savedCollecting.messages().getFirst().createdAt());
+        assertFalse(savedCollecting.messages().getFirst().createdAt().isBefore(startedAt.minusSeconds(1)));
+        assertFalse(savedCollecting.messages().getFirst().createdAt().isAfter(finishedAt.plusSeconds(1)));
     }
 
     @Test
@@ -88,9 +81,8 @@ class RawMdServiceLockTest {
         lockProperties.setSessionLockRetryCount(2);
         lockProperties.setSessionLockRetryDelayMs(10);
 
-        RawMdRepository rawRepository = mock(RawMdRepository.class);
-        RawBatchMdRepository batchRepository = mock(RawBatchMdRepository.class);
-        RawBatchMdAssembler batchMapper = new RawBatchMdAssembler();
+        RawDialogueStore rawRepository = mock(RawDialogueStore.class);
+        DialogueBatchStore batchRepository = mock(DialogueBatchStore.class);
 
         CountDownLatch firstCallEntered = new CountDownLatch(1);
         CountDownLatch releaseFirstCall = new CountDownLatch(1);
@@ -108,7 +100,7 @@ class RawMdServiceLockTest {
                 batchRepository,
                 new RawMdAssembler() {
                     @Override
-                    public String buildMessageBlock(DialogueMessageRole role,
+                    public String buildMessageBlock(MessageRole role,
                                                     String cleanText,
                                                     LocalDateTime timestamp,
                                                     String messageId) {
@@ -127,14 +119,13 @@ class RawMdServiceLockTest {
                         return super.buildMessageBlock(role, cleanText, timestamp, messageId);
                     }
                 },
-                batchMapper,
                 new SessionLockExecutor(lockProperties)
         );
 
         AtomicReference<Throwable> firstThreadFailure = new AtomicReference<>();
         Thread firstThread = new Thread(() -> {
             try {
-                service.appendRawMessage("default", DialogueMessageRole.USER, "第一条消息");
+                service.appendRawMessage("default", MessageRole.USER, "第一条消息");
             } catch (Throwable t) {
                 firstThreadFailure.set(t);
             }
@@ -144,7 +135,7 @@ class RawMdServiceLockTest {
         assertTrue(firstCallEntered.await(1, TimeUnit.SECONDS), "第一条请求应该已经进入临界区");
 
         IllegalStateException timeout = assertThrows(IllegalStateException.class,
-                () -> service.appendRawMessage("default", DialogueMessageRole.USER, "第二条消息"));
+                () -> service.appendRawMessage("default", MessageRole.USER, "第二条消息"));
         assertTrue(timeout.getMessage().contains("failed to acquire session lock"));
 
         releaseFirstCall.countDown();
@@ -152,7 +143,7 @@ class RawMdServiceLockTest {
         assertTrue(!firstThread.isAlive(), "第一条请求应该在释放锁后结束");
         assertTrue(firstThreadFailure.get() == null, "第一条请求不应该失败");
 
-        Object thirdResult = service.appendRawMessage("default", DialogueMessageRole.USER, "第三条消息");
+        Object thirdResult = service.appendRawMessage("default", MessageRole.USER, "第三条消息");
         assertNotNull(thirdResult, "释放锁后应允许后续请求继续进入");
     }
 }

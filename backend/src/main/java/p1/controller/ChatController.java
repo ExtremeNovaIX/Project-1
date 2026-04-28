@@ -6,7 +6,7 @@ import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import p1.mdc.ChatSessionMetrics;
+import p1.infrastructure.mdc.ChatSessionMetrics;
 import p1.model.dto.ChatRequestDTO;
 import p1.service.ChatService;
 
@@ -35,7 +35,8 @@ public class ChatController {
         MDC.put("sessionId", sessionId);
         MDC.put("chatRound", String.valueOf(currentRound));
         try {
-            String rawReply = chatService.sendChatToLLM(request);
+            String rawReply = chatService.sendChatToRpAgent(request);
+            rawReply = rawReply == null ? "" : rawReply;
             List<String> replyList;
             if (request.isShortMode()) {
                 String splitRegex = "(?<=[。！？?!;；…])(?![。！？?!;；…])|(?<=\\.)(?![。！？?!;；…\\.0-9])|(?=\\[)";

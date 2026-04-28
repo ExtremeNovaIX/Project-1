@@ -4,16 +4,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
-import p1.model.enums.DialogueMessageRole;
-import p1.repo.markdown.RawBatchMdRepository;
-import p1.repo.markdown.RawMdRepository;
-import p1.repo.markdown.model.DialogueBatchMessage;
-import p1.repo.markdown.model.MarkdownDocument;
-import p1.repo.markdown.model.RawBatchDocument;
-import p1.repo.markdown.model.RawDialogueMessageRef;
+import p1.model.enums.MessageRole;
+import p1.infrastructure.markdown.assembler.RawMdAssembler;
+import p1.infrastructure.markdown.model.DialogueBatchMessage;
+import p1.infrastructure.markdown.model.MarkdownDocument;
+import p1.infrastructure.markdown.model.RawBatchDocument;
+import p1.infrastructure.markdown.model.RawDialogueMessageRef;
 import p1.service.lock.SessionLockExecutor;
-import p1.service.markdown.assembler.RawBatchMdAssembler;
-import p1.service.markdown.assembler.RawMdAssembler;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -31,10 +28,9 @@ public class RawMdService {
     private static final DateTimeFormatter BATCH_ID_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
     private static final Duration COLLECTING_REOPEN_WINDOW = Duration.ofMinutes(30);
 
-    private final RawMdRepository rawMdRepository;
-    private final RawBatchMdRepository rawBatchMdRepo;
+    private final RawDialogueStore rawDialogueStore;
+    private final DialogueBatchStore dialogueBatchStore;
     private final RawMdAssembler rawMdAssembler;
-    private final RawBatchMdAssembler rawBatchMdAssembler;
     private final SessionLockExecutor sessionLockExecutor;
 
     /**
@@ -43,7 +39,7 @@ public class RawMdService {
      * 否则并发写入时可能出现只写入一边的中间态。
      */
     public RawDialogueMessageRef appendRawMessage(String sessionId,
-                                                  DialogueMessageRole role,
+                                                  MessageRole role,
                                                   String text) {
         String cleanText = normalizeText(text);
         if (cleanText.isBlank()) {
@@ -56,15 +52,15 @@ public class RawMdService {
         return sessionLockExecutor.execute(sessionId, "appendDialogueMessage", () -> {
             String messageId = buildMessageId();
             MarkdownDocument initialDailyNote = rawMdAssembler.createDailyNote(sessionId, date);
-            rawMdRepository.createDailyNoteIfMissing(sessionId, date, initialDailyNote);
-            rawMdRepository.appendToDailyNote(
+            rawDialogueStore.createDailyNoteIfMissing(sessionId, date, initialDailyNote);
+            rawDialogueStore.appendToDailyNote(
                     sessionId,
                     date,
                     rawMdAssembler.buildMessageBlock(role, cleanText, lifecycleTime, messageId)
             );
 
             RawDialogueMessageRef rawRef = new RawDialogueMessageRef(
-                    rawMdRepository.relativeDailyNotePath(sessionId, date),
+                    rawDialogueStore.relativeDailyNotePath(sessionId, date),
                     messageId,
                     role,
                     lifecycleTime
@@ -108,7 +104,7 @@ public class RawMdService {
                     null,
                     messages
             );
-            rawBatchMdRepo.saveCollecting(sessionId, rawBatchMdAssembler.toMarkdown(updatedCollecting));
+            dialogueBatchStore.saveCollecting(sessionId, updatedCollecting);
             log.debug("[对话批次] sessionId={} collecting 已追加消息，batchId={}，当前消息数={}",
                     sessionId, updatedCollecting.id(), updatedCollecting.messageCount());
             return rawRef;
@@ -116,12 +112,12 @@ public class RawMdService {
     }
 
     public Optional<RawBatchDocument> findProcessing(String sessionId) {
-        return rawBatchMdRepo.findProcessing(sessionId).map(rawBatchMdAssembler::fromMarkdown);
+        return dialogueBatchStore.findProcessing(sessionId);
     }
 
     public boolean hasProcessingBatch(String sessionId) {
         return sessionLockExecutor.execute(sessionId, "hasProcessingBatch", () ->
-                rawBatchMdRepo.findProcessing(sessionId).isPresent()
+                dialogueBatchStore.findProcessing(sessionId).isPresent()
         );
     }
 
@@ -172,7 +168,7 @@ public class RawMdService {
                     LocalDateTime.now(),
                     processingMessages
             );
-            rawBatchMdRepo.saveProcessing(sessionId, rawBatchMdAssembler.toMarkdown(processing));
+            dialogueBatchStore.saveProcessing(sessionId, processing);
             log.info("[对话批次] sessionId={} collecting 已转为 processing，batchId={}，本次压缩消息数={}，collecting 总消息数={}",
                     sessionId, processing.id(), processing.messageCount(), collecting.messageCount());
             return Optional.of(processing);
@@ -203,7 +199,7 @@ public class RawMdService {
                         .toList();
 
                 if (remainingMessages.isEmpty()) {
-                    rawBatchMdRepo.deleteCollecting(sessionId);
+                    dialogueBatchStore.deleteCollecting(sessionId);
                     log.info("[对话批次] sessionId={} processing 确认完成，collecting 已清空，batchId={}",
                             sessionId, processing.id());
                 } else {
@@ -216,7 +212,7 @@ public class RawMdService {
                             null,
                             remainingMessages
                     );
-                    rawBatchMdRepo.saveCollecting(sessionId, rawBatchMdAssembler.toMarkdown(updatedCollecting));
+                    dialogueBatchStore.saveCollecting(sessionId, updatedCollecting);
                     log.info("[对话批次] sessionId={} processing 确认完成，collecting 已扣除已处理消息，batchId={}，剩余消息数={}",
                             sessionId, processing.id(), updatedCollecting.messageCount());
                 }
@@ -225,7 +221,7 @@ public class RawMdService {
                         sessionId, processing.id());
             }
 
-            rawBatchMdRepo.deleteProcessing(sessionId);
+            dialogueBatchStore.deleteProcessing(sessionId);
             log.info("[对话批次] sessionId={} processing 已删除，batchId={}", sessionId, processing.id());
         });
     }
@@ -235,11 +231,11 @@ public class RawMdService {
      * 启动恢复时用它来确定还有哪些 session 存在未完成任务。
      */
     public Set<String> listSessionIdsWithOpenBatches() {
-        return rawBatchMdRepo.listSessionIdsWithOpenBatches();
+        return dialogueBatchStore.listSessionIdsWithOpenBatches();
     }
 
     private Optional<RawBatchDocument> loadCollecting(String sessionId) {
-        return rawBatchMdRepo.findCollecting(sessionId).map(rawBatchMdAssembler::fromMarkdown);
+        return dialogueBatchStore.findCollecting(sessionId);
     }
 
     /**
@@ -307,8 +303,8 @@ public class RawMdService {
                 referenceTime,
                 new ArrayList<>(collecting.messages())
         );
-        rawBatchMdRepo.saveProcessing(sessionId, rawBatchMdAssembler.toMarkdown(processing));
-        rawBatchMdRepo.deleteCollecting(sessionId);
+        dialogueBatchStore.saveProcessing(sessionId, processing);
+        dialogueBatchStore.deleteCollecting(sessionId);
         log.info("[对话批次] collecting 已转为 processing，sessionId={}，batchId={}，消息数={}，reason={}",
                 sessionId, processing.id(), processing.messageCount(), reason);
     }

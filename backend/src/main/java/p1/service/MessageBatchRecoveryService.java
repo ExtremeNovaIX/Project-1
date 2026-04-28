@@ -6,12 +6,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
-import p1.component.ai.memory.ChatMessageAppender;
-import p1.component.ai.memory.MemoryAsyncCompressor;
+import p1.component.agent.memory.MemoryAsyncCompressor;
+import p1.component.agent.memory.model.DialogueBatch;
 import p1.config.prop.AssistantProperties;
 import p1.config.runtime.RuntimeModelSettingsRegistry;
-import p1.repo.markdown.model.DialogueBatchMessage;
-import p1.repo.markdown.model.RawBatchDocument;
+import p1.infrastructure.markdown.model.DialogueBatchMessage;
+import p1.infrastructure.markdown.model.RawBatchDocument;
 import p1.service.markdown.RawMdService;
 
 import java.util.List;
@@ -45,7 +45,7 @@ public class MessageBatchRecoveryService {
 
         log.info("[对话恢复] 发现 {} 个 session 存在未完成的对话批次，正在恢复...", sessionIds.size());
         for (String sessionId : sessionIds) {
-            ChatMessageAppender.DialogueBatch processingBatch = rawMdService.findProcessing(sessionId)
+            DialogueBatch processingBatch = rawMdService.findProcessing(sessionId)
                     .map(this::toDialogueBatch)
                     .orElse(null);
             if (processingBatch != null) {
@@ -64,12 +64,12 @@ public class MessageBatchRecoveryService {
         }
     }
 
-    private void submitRecoveryCompression(ChatMessageAppender.DialogueBatch batch) {
+    private void submitRecoveryCompression(DialogueBatch batch) {
         if (batch == null || batch.messages().isEmpty()) {
             return;
         }
         if (!canRecoverWithCurrentSettings(batch.sessionId())) {
-            log.warn("[瀵硅瘽鎭㈠] sessionId={}, batchId={} 鏆傚仠鍚姩鎭㈠锛屽悗绔粯璁?AI 閰嶇疆涓嶅彲鐢紝绛夊緟 Qt Settings 閰嶇疆鍚庡啀瑙﹀彂",
+            log.warn("[对话恢复] sessionId={}, batchId={} 暂停启动恢复，默认 AI 配置不可用，等待 Qt Settings 配置后再触发",
                     batch.sessionId(), batch.batchId());
             return;
         }
@@ -98,8 +98,8 @@ public class MessageBatchRecoveryService {
                 batch.sessionId(), batch.batchId()));
     }
 
-    private ChatMessageAppender.DialogueBatch toDialogueBatch(RawBatchDocument document) {
-        return new ChatMessageAppender.DialogueBatch(document.id(), document.sessionId(), document.messages());
+    private DialogueBatch toDialogueBatch(RawBatchDocument document) {
+        return new DialogueBatch(document.id(), document.sessionId(), document.messages());
     }
 
     private List<ChatMessage> toChatMessages(List<DialogueBatchMessage> pendingMessages) {

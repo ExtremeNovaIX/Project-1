@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: ArcLight-chat-benchmark
+  datasource:
+    url: jdbc:h2:file:./data/assistant_benchmark_db;DB_CLOSE_ON_EXIT=FALSE;AUTO_RECONNECT=TRUE
+
+server:
+  port: 18080
+
+assistant:
+  embedding-store:
+    path: data/vector_indices_benchmark
+  md-repository:
+    path: data/memory_benchmark

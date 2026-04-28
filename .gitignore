@@ -47,6 +47,13 @@ client_secret*.json
 CMakeUserPresets.json
 **/CMakeUserPresets.json
 
+# Benchmark local inputs and outputs
+/backend/benchmark/longmemeval/longmemeval_oracle.json
+/backend/benchmark/longmemeval_m_cleaned.json
+/backend/benchmark/longmemeval_s_cleaned.json
+/backend/benchmark/longmemeval/__pycache__/
+/backend/benchmark/out/
+
 # Frontend dependencies and caches
 /frontend/arklight-frontend/node_modules/
 

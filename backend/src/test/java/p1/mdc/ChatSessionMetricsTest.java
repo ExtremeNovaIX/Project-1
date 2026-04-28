@@ -2,6 +2,7 @@ package p1.mdc;
 
 import dev.langchain4j.model.openai.OpenAiTokenUsage;
 import org.junit.jupiter.api.Test;
+import p1.infrastructure.mdc.ChatSessionMetrics;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 

@@ -3,10 +3,10 @@ package p1.component.agent.memory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import p1.component.agent.memory.model.ExtractedMemoryEvent;
 import p1.infrastructure.vector.ArchiveVectorLibrary;
 import p1.model.document.MemoryArchiveDocument;
 import p1.model.document.RecentEventGroupDocument;
-import p1.component.agent.memory.model.ExtractedMemoryEvent;
 import p1.service.archive.ArchiveEmbeddingService;
 import p1.service.archive.graph.ArchiveGraphService;
 import p1.service.archive.graph.ArchiveLinkService;
@@ -44,6 +44,13 @@ public class MemoryWriteService {
     public List<MemoryArchiveDocument> saveEventGroup(String sessionId,
                                                       List<ExtractedMemoryEvent> events,
                                                       List<String> groupTags) {
+        return saveEventGroup(sessionId, events, groupTags, List.of());
+    }
+
+    public List<MemoryArchiveDocument> saveEventGroup(String sessionId,
+                                                      List<ExtractedMemoryEvent> events,
+                                                      List<String> groupTags,
+                                                      List<String> sourceRefs) {
         if (events == null || events.isEmpty()) {
             return List.of();
         }
@@ -58,7 +65,8 @@ public class MemoryWriteService {
 
         for (int index = 0; index < events.size(); index++) {
             ExtractedMemoryEvent event = events.get(index);
-            MemoryArchiveDocument archive = buildArchive(normalizedSessionId, event, groupId, index, groupTags);
+            MemoryArchiveDocument archive =
+                    buildArchive(normalizedSessionId, event, groupId, index, groupTags, sourceRefs);
             savedArchives.add(saveArchive(archive, "事件组写入"));
         }
 
@@ -138,20 +146,21 @@ public class MemoryWriteService {
                                                ExtractedMemoryEvent event,
                                                String groupId,
                                                Integer groupOrder) {
-        return buildArchive(sessionId, event, groupId, groupOrder, List.of());
+        return buildArchive(sessionId, event, groupId, groupOrder, List.of(), List.of());
     }
 
     private MemoryArchiveDocument buildArchive(String sessionId,
                                                ExtractedMemoryEvent event,
                                                String groupId,
                                                Integer groupOrder,
-                                               List<String> groupTags) {
+                                               List<String> groupTags,
+                                               List<String> sourceRefs) {
         MemoryArchiveDocument archive = new MemoryArchiveDocument();
         archive.setSessionId(normalizeSessionId(sessionId));
         archive.setGroupId(normalize(groupId));
         archive.setGroupOrder(groupOrder);
         archive.setGroupTags(normalizeTags(groupTags));
-        // topic 是 archive 标题、文件名和主题语义的唯一来源。
+        archive.setSourceRefs(normalizeTags(sourceRefs));
         archive.setTopic(normalize(event == null ? null : event.getTopic()));
         archive.setKeywordSummary(normalize(event == null ? null : event.getKeywordSummary()));
         archive.setNarrative(normalize(event == null ? null : event.getNarrative()));

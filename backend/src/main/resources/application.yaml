@@ -84,7 +84,7 @@ assistant:
     # 标签区分度 boost 的权重。
     # 最终排序分 = 时间调整后支持度 * (1 + boost-weight * 标签区分度)。
     # 调高：共享稀有标签的候选更容易胜出；调低：排序更依赖向量相似度。
-    recent-window-idf-boost-weight: 0.8
+    recent-window-idf-boost-weight: 0.9
 
     # IDF 分子平滑项：N + doc-count-smoothing。
     # N 是带标签的 recent group 总数。
@@ -112,7 +112,7 @@ assistant:
 
     # 最终连接边的最低得分阈值，低于这个值的边会被拦截。
     # 调高：连边更保守；调低：更容易建立关联边。
-    recent-window-final-threshold: 0.9
+    recent-window-final-threshold: 0.8
 
   markdown-migration:
     enabled: false

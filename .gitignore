@@ -7,3 +7,8 @@ backend/data/assistant_db.trace.db
 /.idea
 .idea/workspace.xml
 /backend/test
+backend/benchmark/longmemeval/longmemeval_oracle.json
+backend/benchmark/longmemeval_m_cleaned.json
+backend/benchmark/longmemeval_s_cleaned.json
+/backend/benchmark/longmemeval/__pycache__
+/backend/benchmark/out

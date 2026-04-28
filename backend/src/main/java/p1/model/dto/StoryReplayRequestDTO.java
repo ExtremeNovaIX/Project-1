@@ -5,11 +5,10 @@ import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
-public class ChatRequestDTO {
-    private String message;
+public class StoryReplayRequestDTO {
     private String sessionId;
     private String characterName;
-    private boolean shortMode;
+    private Integer targetLength;
     private String aiBaseUrl;
     private String aiApiKey;
     private String aiModelName;

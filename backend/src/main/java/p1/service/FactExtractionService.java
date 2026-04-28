@@ -1,16 +1,24 @@
 package p1.service;
 
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.output.structured.Description;
+import dev.langchain4j.service.AiServices;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import p1.component.ai.memory.SummaryCacheManager;
 import p1.component.ai.service.FactEvaluatorAiService;
 import p1.component.ai.service.FactExtractionAiService;
+import p1.config.prop.AssistantProperties;
+import p1.config.runtime.RuntimeModelSettings;
+import p1.config.runtime.RuntimeModelSettingsRegistry;
 import p1.model.FactExtractionPipelineResult;
 import p1.model.dto.ExtractedMemoryEventDTO;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -23,6 +31,8 @@ public class FactExtractionService {
     private final FactExtractionAiService factExtractionAiService;
     private final FactEvaluatorAiService factEvaluatorAiService;
     private final SummaryCacheManager summaryCacheManager;
+    private final AssistantProperties assistantProperties;
+    private final RuntimeModelSettingsRegistry runtimeModelSettingsRegistry;
 
     /**
      * 事件提取入口
@@ -32,16 +42,70 @@ public class FactExtractionService {
      */
     public List<ExtractedFactEventDTO> extractFact(List<ChatMessage> chatContext, String sessionId) {
         String backendSummary = summaryCacheManager.getSummary(sessionId);
-        FactExtractionDTO extracted = factExtractionAiService.extractFacts(chatContext, backendSummary);
+        FactExtractionDTO extracted = factExtractionServiceFor(sessionId).extractFacts(chatContext, backendSummary);
         return safeExtractedEvents(extracted);
     }
 
     public FactSummaryDTO summarizeFacts(List<ExtractedFactEventDTO> extractedEvents) {
+        return summarizeFacts(extractedEvents, null);
+    }
+
+    public FactSummaryDTO summarizeFacts(List<ExtractedFactEventDTO> extractedEvents, String sessionId) {
         List<ExtractedFactEventDTO> safeEvents = extractedEvents == null ? List.of() : extractedEvents;
         if (safeEvents.isEmpty()) {
             return emptySummary();
         }
-        return factEvaluatorAiService.evaluateAndSummarizeFacts(safeEvents);
+        return factEvaluatorServiceFor(sessionId).evaluateAndSummarizeFacts(safeEvents);
+    }
+
+    private FactExtractionAiService factExtractionServiceFor(String sessionId) {
+        return runtimeModelSettingsRegistry.find(sessionId)
+                .filter(this::hasChatOverride)
+                .map(settings -> AiServices.builder(FactExtractionAiService.class)
+                        .chatModel(buildRuntimeChatModel(settings))
+                        .build())
+                .orElse(factExtractionAiService);
+    }
+
+    private FactEvaluatorAiService factEvaluatorServiceFor(String sessionId) {
+        return runtimeModelSettingsRegistry.find(sessionId)
+                .filter(this::hasChatOverride)
+                .map(settings -> AiServices.builder(FactEvaluatorAiService.class)
+                        .chatModel(buildRuntimeChatModel(settings))
+                        .build())
+                .orElse(factEvaluatorAiService);
+    }
+
+    private ChatModel buildRuntimeChatModel(RuntimeModelSettings settings) {
+        AssistantProperties.ChatModelConfig defaults = assistantProperties.activeChatModel();
+        String baseUrl = firstText(settings.aiBaseUrl(), defaults.getBaseUrl());
+        String apiKey = firstText(settings.aiApiKey(), defaults.getApiKey());
+        String modelName = firstText(settings.aiModelName(), defaults.getModelName());
+        long timeoutSeconds = defaults.getTimeoutSeconds() == null ? 300L : defaults.getTimeoutSeconds();
+
+        OpenAiChatModel.OpenAiChatModelBuilder builder = OpenAiChatModel.builder()
+                .baseUrl(baseUrl)
+                .modelName(modelName)
+                .timeout(Duration.ofSeconds(timeoutSeconds))
+                .temperature(0.0)
+                .logRequests(defaults.isLogEnabled())
+                .logResponses(defaults.isLogEnabled());
+
+        if (StringUtils.hasText(apiKey)) {
+            builder.apiKey(apiKey);
+        }
+        return builder.build();
+    }
+
+    private boolean hasChatOverride(RuntimeModelSettings settings) {
+        return settings != null
+                && (StringUtils.hasText(settings.aiBaseUrl())
+                || StringUtils.hasText(settings.aiApiKey())
+                || StringUtils.hasText(settings.aiModelName()));
+    }
+
+    private String firstText(String value, String fallback) {
+        return StringUtils.hasText(value) ? value.trim() : fallback;
     }
 
     public FactExtractionPipelineResult buildPipelineResult(List<ExtractedFactEventDTO> extractedEvents,

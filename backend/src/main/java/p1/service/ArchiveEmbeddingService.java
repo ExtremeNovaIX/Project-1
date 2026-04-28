@@ -1,10 +1,7 @@
 package p1.service;
 
 import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +23,6 @@ import java.util.stream.Collectors;
 public class ArchiveEmbeddingService {
 
     private final EmbeddingService embeddingService;
-    private final EmbeddingModel embeddingModel;
     private final MemoryArchiveMarkdownService archiveService;
 
     /**
@@ -69,7 +65,7 @@ public class ArchiveEmbeddingService {
                                       String groupId) {
         String normalizedSessionId = SessionUtil.normalizeSessionId(sessionId);
         // ARCHIVE 和 RECENT_24H 共用同一套 archive 输入，但构建出的向量文档粒度不同。
-        List<MemoryVectorDocument> documents = buildArchiveDocuments(library, archives, groupId);
+        List<MemoryVectorDocument> documents = buildArchiveDocuments(normalizedSessionId, library, archives, groupId);
         if (documents.isEmpty()) {
             return List.of();
         }
@@ -110,7 +106,7 @@ public class ArchiveEmbeddingService {
         String normalizedSessionId = SessionUtil.normalizeSessionId(sessionId);
 
         List<MemoryVectorDocument> documents = archiveService.findAllOrderByIdAsc(normalizedSessionId).stream()
-                .map(this::buildArchiveDocument)
+                .map(archive -> buildArchiveDocument(normalizedSessionId, archive))
                 .filter(Objects::nonNull)
                 .toList();
 
@@ -126,7 +122,7 @@ public class ArchiveEmbeddingService {
 
         for (Map.Entry<String, List<MemoryArchiveDocument>> entry : archivesBySession.entrySet()) {
             List<MemoryVectorDocument> documents = entry.getValue().stream()
-                    .map(this::buildArchiveDocument)
+                    .map(archive -> buildArchiveDocument(entry.getKey(), archive))
                     .filter(Objects::nonNull)
                     .toList();
             embeddingService.rebuildLibrary(entry.getKey(), ArchiveVectorLibrary.ARCHIVE.rootLibrary(), documents);
@@ -136,7 +132,8 @@ public class ArchiveEmbeddingService {
     /**
      * 按目标 archive 子库构建对应的向量文档列表。
      */
-    private List<MemoryVectorDocument> buildArchiveDocuments(ArchiveVectorLibrary library,
+    private List<MemoryVectorDocument> buildArchiveDocuments(String sessionId,
+                                                             ArchiveVectorLibrary library,
                                                              List<MemoryArchiveDocument> archives,
                                                              String groupId) {
         if (archives == null || archives.isEmpty()) {
@@ -145,30 +142,30 @@ public class ArchiveEmbeddingService {
 
         return switch (library) {
             case ARCHIVE -> archives.stream()
-                    .map(this::buildArchiveDocument)
+                    .map(archive -> buildArchiveDocument(sessionId, archive))
                     .filter(Objects::nonNull)
                     .toList();
-            case RECENT_24H -> buildRecent24hDocuments(groupId, archives);
+            case RECENT_24H -> buildRecent24hDocuments(sessionId, groupId, archives);
         };
     }
 
     /**
      * 构建长期 archive 库使用的向量文档。
      */
-    private MemoryVectorDocument buildArchiveDocument(MemoryArchiveDocument archive) {
+    private MemoryVectorDocument buildArchiveDocument(String sessionId, MemoryArchiveDocument archive) {
         if (archive == null || archive.getId() == null) {
             return null;
         }
 
         String documentId = MemoryVectorDocumentIds.archiveDocumentId(archive.getId());
-        return buildVectorDocument(archive, documentId, Map.of());
+        return buildVectorDocument(sessionId, archive, documentId, Map.of());
     }
 
     /**
      * 构建 recent-24h 库使用的一组向量文档。
      * 组内每个事件都参与检索，但它们会携带相同的 groupId 和 headArchiveId 元数据。
      */
-    private List<MemoryVectorDocument> buildRecent24hDocuments(String groupId, List<MemoryArchiveDocument> archives) {
+    private List<MemoryVectorDocument> buildRecent24hDocuments(String sessionId, String groupId, List<MemoryArchiveDocument> archives) {
         if (groupId == null || groupId.isBlank()) {
             throw new IllegalArgumentException("RECENT_24H 写入必须提供 groupId");
         }
@@ -192,7 +189,7 @@ public class ArchiveEmbeddingService {
                 extraMetadata.put("head_archive_id", String.valueOf(headArchiveId));
             }
 
-            MemoryVectorDocument document = buildVectorDocument(archive, documentId, extraMetadata);
+            MemoryVectorDocument document = buildVectorDocument(sessionId, archive, documentId, extraMetadata);
             if (document != null) {
                 documents.add(document);
             }
@@ -204,7 +201,8 @@ public class ArchiveEmbeddingService {
      * 构建通用向量文档。
      * archive 和 recent-24h 两类库都复用这套构建逻辑，只是 documentId 和附加元数据不同。
      */
-    private MemoryVectorDocument buildVectorDocument(MemoryArchiveDocument archive,
+    private MemoryVectorDocument buildVectorDocument(String sessionId,
+                                                     MemoryArchiveDocument archive,
                                                      String documentId,
                                                      Map<String, String> extraMetadata) {
         String indexText = buildArchiveIndexText(archive);
@@ -225,8 +223,7 @@ public class ArchiveEmbeddingService {
         }
 
         TextSegment segment = TextSegment.from(indexText, metadata);
-        Response<Embedding> embeddingResponse = embeddingModel.embed(segment);
-        return new MemoryVectorDocument(documentId, embeddingResponse.content(), segment);
+        return new MemoryVectorDocument(documentId, embeddingService.embed(sessionId, segment), segment);
     }
 
     /**

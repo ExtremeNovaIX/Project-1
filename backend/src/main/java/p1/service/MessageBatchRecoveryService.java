@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import p1.component.ai.memory.ChatMessageAppender;
 import p1.component.ai.memory.MemoryAsyncCompressor;
 import p1.config.prop.AssistantProperties;
+import p1.config.runtime.RuntimeModelSettingsRegistry;
 import p1.repo.markdown.model.DialogueBatchMessage;
 import p1.repo.markdown.model.RawBatchDocument;
 import p1.service.markdown.RawMdService;
@@ -24,6 +25,7 @@ public class MessageBatchRecoveryService {
     private final MemoryAsyncCompressor memoryAsyncCompressor;
     private final RawMdService rawMdService;
     private final AssistantProperties assistantProperties;
+    private final RuntimeModelSettingsRegistry runtimeModelSettingsRegistry;
 
     @EventListener(ApplicationReadyEvent.class)
     public void recoverPendingDialogueMessages() {
@@ -66,6 +68,11 @@ public class MessageBatchRecoveryService {
         if (batch == null || batch.messages().isEmpty()) {
             return;
         }
+        if (!canRecoverWithCurrentSettings(batch.sessionId())) {
+            log.warn("[瀵硅瘽鎭㈠] sessionId={}, batchId={} 鏆傚仠鍚姩鎭㈠锛屽悗绔粯璁?AI 閰嶇疆涓嶅彲鐢紝绛夊緟 Qt Settings 閰嶇疆鍚庡啀瑙﹀彂",
+                    batch.sessionId(), batch.batchId());
+            return;
+        }
 
         List<ChatMessage> chatMessages = toChatMessages(batch.messages());
         if (chatMessages.isEmpty()) {
@@ -99,5 +106,21 @@ public class MessageBatchRecoveryService {
         return pendingMessages.stream()
                 .map(DialogueBatchMessage::toChatMessage)
                 .toList();
+    }
+
+    private boolean canRecoverWithCurrentSettings(String sessionId) {
+        if (runtimeModelSettingsRegistry.find(sessionId).isPresent()) {
+            return true;
+        }
+        AssistantProperties.ChatModelConfig chatModel = assistantProperties.activeChatModel();
+        return chatModel != null
+                && hasRealText(chatModel.getBaseUrl())
+                && hasRealText(chatModel.getModelName())
+                && hasRealText(chatModel.getApiKey())
+                && !"default_value".equals(chatModel.getApiKey().trim());
+    }
+
+    private boolean hasRealText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 }

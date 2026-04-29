@@ -7,16 +7,17 @@ import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import p1.config.prop.AssistantProperties;
+import p1.config.runtime.RuntimeModelSettingsRegistry;
 import p1.infrastructure.markdown.MarkdownFileAccess;
 import p1.infrastructure.markdown.MarkdownMemoryArchiveStore;
+import p1.infrastructure.markdown.assembler.MemoryArchiveMdAssembler;
+import p1.infrastructure.markdown.io.MarkdownFrontmatterIO;
 import p1.infrastructure.vector.ArchiveVectorLibrary;
 import p1.infrastructure.vector.MemoryVectorDocumentIds;
 import p1.infrastructure.vector.SessionMemoryVectorStoreFactory;
 import p1.model.document.MemoryArchiveDocument;
-import p1.infrastructure.markdown.io.MarkdownFrontmatterIO;
 import p1.service.EmbeddingService;
 import p1.service.markdown.MemoryArchiveStore;
-import p1.infrastructure.markdown.assembler.MemoryArchiveMdAssembler;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -48,9 +49,11 @@ class ArchiveEmbeddingServiceTest {
         EmbeddingModel embeddingModel = new TestEmbeddingModel();
         EmbeddingService embeddingService = new EmbeddingService(
                 new SessionMemoryVectorStoreFactory(props),
-                embeddingModel
+                embeddingModel,
+                props,
+                new RuntimeModelSettingsRegistry()
         );
-        ArchiveEmbeddingService service = new ArchiveEmbeddingService(embeddingService, embeddingModel, archiveService);
+        ArchiveEmbeddingService service = new ArchiveEmbeddingService(embeddingService, archiveService);
 
         MemoryArchiveDocument first = archive("test", "group-1", "recent hit one");
         MemoryArchiveDocument second = archive("test", "group-1", "recent hit two");

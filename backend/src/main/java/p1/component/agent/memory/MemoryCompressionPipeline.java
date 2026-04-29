@@ -38,7 +38,7 @@ public class MemoryCompressionPipeline {
             return Optional.empty();
         }
 
-        FactExtractionService.FactSummaryDTO summary = factExtractionService.summarizeFacts(importantEvents);
+        FactExtractionService.FactSummaryDTO summary = factExtractionService.summarizeFacts(importantEvents, sessionId);
         FactExtractionPipelineResult extractionResult =
                 factExtractionService.buildPipelineResult(importantEvents, summary);
         log.info("[记忆压缩] sessionId={} 第二阶段摘要完成，事件数={}，tagCount={}",

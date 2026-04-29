@@ -37,6 +37,7 @@ public class LuceneMemoryVectorStore implements MemoryVectorStore {
     private static final String FIELD_TEXT = "text";
     private static final String FIELD_VECTOR = "embedding";
     private static final String FIELD_METADATA_PREFIX = "meta_";
+    private static final int MAX_LUCENE_VECTOR_DIMENSIONS = 1024;
 
     private final Path storePath;
     private final ReadWriteLock storeLock = new ReentrantReadWriteLock();
@@ -70,7 +71,7 @@ public class LuceneMemoryVectorStore implements MemoryVectorStore {
 
                 IndexSearcher searcher = new IndexSearcher(reader);
                 TopDocs topDocs = searcher.search(
-                        new KnnFloatVectorQuery(FIELD_VECTOR, queryEmbedding.vector(), maxResults),
+                        new KnnFloatVectorQuery(FIELD_VECTOR, luceneVector(queryEmbedding.vector()), maxResults),
                         maxResults
                 );
 
@@ -196,10 +197,20 @@ public class LuceneMemoryVectorStore implements MemoryVectorStore {
         luceneDocument.add(new StoredField(FIELD_TEXT, document.segment().text()));
         luceneDocument.add(new KnnFloatVectorField(
                 FIELD_VECTOR,
-                document.embedding().vector(),
+                luceneVector(document.embedding().vector()),
                 VectorSimilarityFunction.COSINE
         ));
         return luceneDocument;
+    }
+
+    private float[] luceneVector(float[] vector) {
+        if (vector == null || vector.length <= MAX_LUCENE_VECTOR_DIMENSIONS) {
+            return vector;
+        }
+
+        float[] truncated = new float[MAX_LUCENE_VECTOR_DIMENSIONS];
+        System.arraycopy(vector, 0, truncated, 0, MAX_LUCENE_VECTOR_DIMENSIONS);
+        return truncated;
     }
 
     private Directory openDirectory() throws IOException {

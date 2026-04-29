@@ -78,7 +78,7 @@ public final class FrontmatterReader {
             return List.of();
         }
         return list.stream()
-                .map(FrontmatterReader::longValue)
+                .map(item -> FrontmatterReader.longValue(item))
                 .filter(Objects::nonNull)
                 .toList();
     }

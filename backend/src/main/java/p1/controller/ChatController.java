@@ -3,6 +3,8 @@ package p1.controller;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import p1.infrastructure.mdc.ChatSessionMetrics;
 import p1.model.dto.ChatRequestDTO;
@@ -10,6 +12,7 @@ import p1.service.ChatService;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import static p1.utils.SessionUtil.normalizeSessionId;
 
@@ -24,7 +27,7 @@ public class ChatController {
     private final ChatSessionMetrics chatSessionMetrics;
 
     @PostMapping("/send")
-    public List<String> send(@RequestBody ChatRequestDTO request) {
+    public ResponseEntity<?> send(@RequestBody ChatRequestDTO request) {
         String sessionId = normalizeSessionId(request.getSessionId());
         request.setSessionId(sessionId);
         int currentRound = chatSessionMetrics.incrementAndGetRound(sessionId);
@@ -46,11 +49,38 @@ public class ChatController {
             } else {
                 replyList = List.of(rawReply);
             }
-            return replyList;
+            return ResponseEntity.ok(replyList);
+        } catch (Exception e) {
+            log.warn("Chat request failed, sessionId={}, reason={}", sessionId, e.toString());
+            return ResponseEntity
+                    .status(statusFor(e))
+                    .body(Map.of("message", userFacingError(e)));
         } finally {
             MDC.remove("chatRound");
             MDC.remove("sessionId");
         }
+    }
+
+    private HttpStatus statusFor(Exception e) {
+        String name = e.getClass().getSimpleName();
+        if (name.contains("Authentication")) {
+            return HttpStatus.UNAUTHORIZED;
+        }
+        if (name.contains("Http") || name.contains("RateLimit") || name.contains("Timeout")) {
+            return HttpStatus.BAD_GATEWAY;
+        }
+        return HttpStatus.INTERNAL_SERVER_ERROR;
+    }
+
+    private String userFacingError(Exception e) {
+        String message = e.getMessage();
+        if (message == null || message.isBlank()) {
+            message = e.toString();
+        }
+        if (message.contains("Authentication Fails") || message.contains("authentication")) {
+            return "AI API key authentication failed. Check the API key, base URL, and model name in Settings.";
+        }
+        return message;
     }
 
 }

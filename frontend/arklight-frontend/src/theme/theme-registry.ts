@@ -34,6 +34,7 @@ export const registeredThemes: RegisteredTheme[] = [
       bootAnimationEnabled: true,
       bootDurationMs: 3500,
       responseDelayMs: 1000,
+      shortModeEnabled: true,
       moteCount: 42,
       backendBaseUrl: 'http://localhost:8080'
     },
@@ -62,6 +63,7 @@ export const registeredThemes: RegisteredTheme[] = [
       bootAnimationEnabled: true,
       bootDurationMs: 1200,
       responseDelayMs: 600,
+      shortModeEnabled: true,
       moteCount: 28,
       backendBaseUrl: 'http://localhost:8080'
     },

@@ -1,10 +1,9 @@
 package p1.utils;
 
-import dev.langchain4j.data.message.*;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.message.*;
 
 import java.time.LocalDateTime;
-
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -97,6 +96,7 @@ public class ChatMessageUtil {
 
     /**
      * 判断消息是否为AI最终响应消息
+     *
      * @param message 要判断的消息对象
      * @return 是否为AI最终响应消息
      */
@@ -108,6 +108,7 @@ public class ChatMessageUtil {
 
     /**
      * 判断消息是否为正式对话消息
+     *
      * @param message 要判断的消息对象
      * @return 是否为正式对话消息
      */
@@ -115,6 +116,9 @@ public class ChatMessageUtil {
         return message instanceof UserMessage || isAiFinalResponseMessage(message);
     }
 
+    /**
+     * 为消息添加时间戳前缀
+     */
     public static ChatMessage withTimestamp(ChatMessage message, LocalDateTime time) {
         String timedText = TimedMessageUtil.prefix(time, extractText(message));
 

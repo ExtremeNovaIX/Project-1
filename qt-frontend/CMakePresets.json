@@ -1,0 +1,35 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 21,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "qt-mingw-debug",
+      "displayName": "Qt 6.11 MinGW Debug",
+      "description": "Build with the Qt installation under E:/QT. Rider can import this preset directly.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/qt-frontend",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_PREFIX_PATH": "E:/QT/6.11.0/mingw_64",
+        "CMAKE_C_COMPILER": "E:/QT/Tools/mingw1310_64/bin/gcc.exe",
+        "CMAKE_CXX_COMPILER": "E:/QT/Tools/mingw1310_64/bin/g++.exe",
+        "CMAKE_MAKE_PROGRAM": "E:/QT/Tools/Ninja/ninja.exe"
+      },
+      "environment": {
+        "PATH": "E:/QT/Tools/CMake_64/bin;E:/QT/Tools/Ninja;E:/QT/Tools/mingw1310_64/bin;E:/QT/6.11.0/mingw_64/bin;$penv{PATH}"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "qt-mingw-debug",
+      "displayName": "Build Qt 6.11 MinGW Debug",
+      "configurePreset": "qt-mingw-debug"
+    }
+  ]
+}

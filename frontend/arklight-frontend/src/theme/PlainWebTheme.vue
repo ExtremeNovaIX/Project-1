@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { Cpu, Send, Settings } from 'lucide-vue-next';
-import StardustField from './StardustField.vue';
 import type { Message, StardustParticle, ThemeText } from './types';
 
 const props = defineProps<{

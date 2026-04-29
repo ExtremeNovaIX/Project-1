@@ -1,6 +1,82 @@
+# IDE / editor state
+/.idea/
+/.vscode/
+/qt-frontend/.idea/
+/qt-frontend/.idea.bad-import-*/
+
+# Build outputs
+/build/
+/backend/target/
+/frontend/arklight-frontend/dist/
+/qt-frontend/build/
+/qt-frontend/cmake-build-*/
+
+# Runtime data and logs
+/backend/data/
+/backend/data - */
+/backend/logs/
+/backend/test/
+*.log
+
+# Tool caches and local agent config
+/frontend/arklight-frontend/.ai/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.local
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+credentials.json
+*-credentials.json
+*_credentials.json
+credentials.*.json
+secrets.json
+secrets.*.json
+client_secret*.json
+/backend/src/main/resources/application-local.*
+/backend/src/main/resources/application-secret.*
+/backend/src/main/resources/application-secrets.*
+
+# Local CMake user presets
+CMakeUserPresets.json
+**/CMakeUserPresets.json
+
+# Benchmark local inputs and outputs
+/backend/benchmark/halumem/__pycache__/
+backend/benchmark/halumem/*.jsonl
+/backend/benchmark/halumem/__pycache__
+
+# Frontend dependencies and caches
+/frontend/arklight-frontend/node_modules/
+
+# Local character test data
+/frontend/arklight-frontend/chara/test/
+/chara/test/
+
+# OS files
+.DS_Store
+Thumbs.db
+
 backend/data/assistant_db.mv.db
 backend/data/assistant_db.trace.db
 /backend/logs
 /backend/data
 /frontend/arklight-frontend/chara/test
 /chara/test
+/.idea
+.idea/workspace.xml
+/backend/test
+backend/benchmark/longmemeval/longmemeval_oracle.json
+backend/benchmark/longmemeval_m_cleaned.json
+backend/benchmark/longmemeval_s_cleaned.json
+/backend/benchmark/longmemeval/__pycache__
+/backend/benchmark/out
+/backend/benchmark/halumem/__pycache__/
+backend/benchmark/halumem/*.jsonl
+/backend/benchmark/halumem/__pycache__

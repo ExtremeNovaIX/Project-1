@@ -41,6 +41,7 @@ export const normalizeFrontendSettings = (
     bootAnimationEnabled: value?.bootAnimationEnabled ?? themeDefaults.bootAnimationEnabled,
     bootDurationMs: clamp(Number(value?.bootDurationMs ?? themeDefaults.bootDurationMs), 0, 10000),
     responseDelayMs: clamp(Number(value?.responseDelayMs ?? themeDefaults.responseDelayMs), 0, 10000),
+    shortModeEnabled: value?.shortModeEnabled ?? themeDefaults.shortModeEnabled,
     moteCount: clamp(normalizedMoteCount <= 0 ? themeDefaults.moteCount : normalizedMoteCount, 12, 120),
     backendBaseUrl: value?.backendBaseUrl?.trim() || themeDefaults.backendBaseUrl
   };

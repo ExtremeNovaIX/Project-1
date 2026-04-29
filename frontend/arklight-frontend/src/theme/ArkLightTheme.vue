@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { ChevronRight, Cpu, Orbit, Send, Settings, Terminal, User } from 'lucide-vue-next';
-import StardustField from './StardustField.vue';
+import { ChevronRight, Cpu, Orbit, Send, Settings, User } from 'lucide-vue-next';
 import type { Message, StardustParticle, ThemeText } from './types';
 
 const props = defineProps<{
@@ -39,16 +38,6 @@ const handleEnterPress = () => {
   emit('send-message');
 };
 
-const handleChatPointerMove = (event: MouseEvent) => {
-  const currentTarget = event.currentTarget as HTMLElement | null;
-  if (!currentTarget) {
-    return;
-  }
-
-  const rect = currentTarget.getBoundingClientRect();
-  currentTarget.style.setProperty('--grid-hover-x', `${event.clientX - rect.left}px`);
-  currentTarget.style.setProperty('--grid-hover-y', `${event.clientY - rect.top}px`);
-};
 </script>
 
 <template>
@@ -99,10 +88,7 @@ const handleChatPointerMove = (event: MouseEvent) => {
     </Transition>
 
     <div class="relative grid h-full w-full min-w-0 overflow-hidden [grid-template-columns:minmax(320px,40%)_minmax(0,1fr)]">
-      <div
-        class="absolute inset-0 z-0 opacity-[0.05] pointer-events-none"
-        style="background-image: linear-gradient(#1A1A1A 1px, transparent 1px), linear-gradient(90deg, #1A1A1A 1px, transparent 1px); background-size: 80px 80px;"
-      ></div>
+      <div class="arklight-global-grid absolute inset-0 z-0 pointer-events-none"></div>
 
       <aside class="relative z-10 flex h-full min-w-0 flex-col overflow-hidden border-r-2 border-[#1A1A1A]/10 bg-[#F1E9D4]">
         <div class="relative z-20 flex h-16 items-center justify-between border-b border-[#1A1A1A]/10 bg-white/26 px-8 backdrop-blur-md">
@@ -152,14 +138,6 @@ const handleChatPointerMove = (event: MouseEvent) => {
                   <div v-for="i in 12" :key="i" class="h-4 w-4 border border-[#4D908E]/20 bg-[#4D908E]/10"></div>
                 </div>
 
-                <div
-                  v-if="props.characterName"
-                  class="absolute bottom-12 left-12 z-20 border border-[#1A1A1A]/10 bg-white/70 px-4 py-3 backdrop-blur"
-                >
-                  <p class="font-mono text-[10px] uppercase tracking-[0.3em] text-[#4D908E]">Character</p>
-                  <p class="mt-2 text-sm font-black uppercase tracking-[0.18em] text-[#1A1A1A]">{{ props.characterName }}</p>
-                  <p class="mt-1 text-[11px] text-[#1A1A1A]/55">{{ props.activeCharacterEmotion || '默认' }}</p>
-                </div>
               </div>
             </div>
 
@@ -200,42 +178,11 @@ const handleChatPointerMove = (event: MouseEvent) => {
       </aside>
 
       <main class="relative z-10 flex min-w-0 flex-col overflow-hidden bg-[#F6F0DC]">
-        <header class="relative flex h-20 shrink-0 items-center justify-between overflow-hidden border-b-2 border-[#1A1A1A] bg-white/52 px-10 backdrop-blur-md">
+        <header class="relative flex h-20 shrink-0 items-center justify-end overflow-hidden border-b-2 border-[#1A1A1A] bg-white/52 px-10 backdrop-blur-md">
           <div
             class="absolute inset-0 opacity-[0.02] pointer-events-none"
             style="background-image: radial-gradient(#1A1A1A 2px, transparent 2px); background-size: 10px 10px;"
           ></div>
-
-          <div class="absolute -right-10 -top-10 z-0 h-48 w-48 opacity-10 pointer-events-none">
-            <svg viewBox="0 0 200 200" class="h-full w-full">
-              <path
-                v-for="i in 6"
-                :key="i"
-                :d="`M ${20 + i * 10} ${100} Q ${100} ${20 + i * 10} ${180 - i * 10} ${100} T ${20 + i * 10} ${100}`"
-                fill="none"
-                stroke="#1A1A1A"
-                stroke-width="0.5"
-                class="arklight-topo-line"
-                :style="{ animationDelay: i * 0.5 + 's' }"
-              />
-            </svg>
-          </div>
-
-          <div class="relative z-10 flex items-center gap-8">
-            <div class="flex flex-col">
-              <div class="flex items-center gap-2">
-                <div class="flex h-8 w-8 items-center justify-center bg-[#1A1A1A] text-white">
-                  <Terminal :size="18" />
-                </div>
-                <div class="flex gap-1">
-                  <div v-for="i in 12" :key="i" class="h-1 w-2 bg-[#4D908E]"></div>
-                </div>
-              </div>
-              <span class="mt-2 text-[10px] font-black uppercase tracking-[0.35em] text-[#1A1A1A]/60">
-                {{ props.workspaceName }}
-              </span>
-            </div>
-          </div>
 
           <div class="relative z-10 flex items-center gap-6">
             <button
@@ -253,11 +200,9 @@ const handleChatPointerMove = (event: MouseEvent) => {
           id="arklight-chat-scroller"
           data-chat-scroller="main"
           class="arklight-chat-surface relative min-h-0 flex-grow space-y-5 overflow-x-hidden overflow-y-auto p-6 arklight-scrollbar-hide md:p-8"
-          @mousemove="handleChatPointerMove"
         >
           <div class="arklight-chat-pattern pointer-events-none absolute inset-0">
             <div class="arklight-chat-grid absolute inset-0"></div>
-            <div class="arklight-chat-grid-focus absolute inset-0"></div>
           </div>
 
           <TransitionGroup name="arklight-message-list">
@@ -318,17 +263,17 @@ const handleChatPointerMove = (event: MouseEvent) => {
           </div>
         </section>
 
-        <footer class="shrink-0 overflow-hidden border-t border-[#1A1A1A]/10 bg-white/26 p-6 backdrop-blur-lg md:p-8">
-          <div class="relative mx-auto flex max-w-5xl min-w-0 items-stretch gap-4 overflow-hidden">
+        <footer class="shrink-0 overflow-hidden border-t border-[#1A1A1A]/10 bg-white/26 px-6 pt-3 pb-1 backdrop-blur-lg md:px-8 md:pt-4 md:pb-1">
+          <div class="relative mx-auto flex max-w-[1060px] min-w-0 items-stretch gap-4 overflow-hidden">
             <div class="group relative min-w-0 flex-grow overflow-hidden">
               <textarea
                 :value="props.userInput"
                 :placeholder="props.themeText.inputPlaceholder"
-                class="min-h-[104px] w-full min-w-0 resize-none overflow-x-hidden rounded-[20px] border border-[#1A1A1A]/15 bg-white px-4 py-4 pr-12 text-[15px] leading-7 shadow-inner transition-all [overflow-wrap:anywhere] [word-break:break-all] focus:outline-none focus:ring-4 focus:ring-[#E85D04]/8 sm:text-[16px]"
+                class="min-h-[96px] w-full min-w-0 resize-none overflow-x-hidden rounded-[22px] border border-[#1A1A1A]/15 bg-white px-5 py-3.5 pr-11 text-[15px] leading-7 shadow-inner transition-all [overflow-wrap:anywhere] [word-break:break-all] focus:outline-none focus:ring-4 focus:ring-[#E85D04]/8 sm:text-[16px]"
                 @input="handleUserInput"
                 @keydown.enter.prevent="handleEnterPress"
               ></textarea>
-              <div class="absolute right-0 top-0 p-4 opacity-20 transition-opacity group-hover:opacity-100">
+              <div class="absolute right-0 top-0 p-3 opacity-20 transition-opacity group-hover:opacity-100">
                 <Cpu :size="20" class="animate-pulse" />
               </div>
             </div>
@@ -337,24 +282,23 @@ const handleChatPointerMove = (event: MouseEvent) => {
               type="button"
               :disabled="props.isSendDisabled || !props.userInput.trim()"
               @click="emit('send-message')"
-              class="group flex w-36 items-center justify-center gap-3 bg-[#1A1A1A] text-white shadow-2xl transition-all hover:bg-[#E85D04] active:scale-90 disabled:cursor-not-allowed disabled:bg-[#1A1A1A]/35 disabled:text-white/55 disabled:shadow-none disabled:hover:bg-[#1A1A1A]/35 disabled:active:scale-100"
+              class="group flex min-h-[96px] w-[156px] shrink-0 items-center justify-center gap-2.5 rounded-[22px] bg-[#1A1A1A] text-white shadow-2xl transition-all hover:bg-[#E85D04] active:scale-90 disabled:cursor-not-allowed disabled:bg-[#1A1A1A]/35 disabled:text-white/55 disabled:shadow-none disabled:hover:bg-[#1A1A1A]/35 disabled:active:scale-100"
             >
               <Send :size="28" class="transition-transform group-hover:-translate-y-1 group-hover:translate-x-1" />
-              <span class="text-[12px] font-black uppercase tracking-[0.3em]">{{ props.themeText.sendButtonLabel }}</span>
+              <span class="text-[11px] font-black uppercase tracking-[0.24em]">{{ props.themeText.sendButtonLabel }}</span>
             </button>
           </div>
         </footer>
 
-        <div class="flex h-12 shrink-0 items-center justify-between bg-[#1A1A1A] px-10 font-mono text-[10px] uppercase tracking-[0.6em] text-white/40">
-          <div class="flex items-center gap-6">
-            <div class="flex gap-1">
-              <div v-for="i in 4" :key="i" class="h-1.5 w-1.5 bg-white/20"></div>
-            </div>
-            <span>{{ props.workspaceName }}</span>
-          </div>
-          <div class="flex items-center gap-4">
-            <span class="animate-pulse">Link: Established</span>
-            <span class="opacity-20">{{ props.backendBaseUrl }}</span>
+        <div
+          class="arklight-status-strip relative h-[8px] shrink-0 overflow-hidden"
+          :title="`${props.workspaceName} | Link: Established | ${props.backendBaseUrl}`"
+          :aria-label="`${props.workspaceName} | Link: Established | ${props.backendBaseUrl}`"
+        >
+          <div class="arklight-status-strip__segments absolute inset-0 flex h-full">
+            <span class="arklight-status-strip__segment arklight-status-strip__segment--left flex-1"></span>
+            <span class="arklight-status-strip__segment arklight-status-strip__segment--center flex-1"></span>
+            <span class="arklight-status-strip__segment arklight-status-strip__segment--right flex-1"></span>
           </div>
         </div>
       </main>
@@ -405,6 +349,14 @@ const handleChatPointerMove = (event: MouseEvent) => {
 
 .arklight-pulse-slow {
   animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.arklight-global-grid {
+  opacity: 0.058;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80' fill='none'%3E%3Cpath d='M0 0.5H80M0.5 0V80M0.5 0.5L79.5 79.5M79.5 0.5L0.5 79.5' stroke='%231A1A1A' stroke-opacity='0.085' stroke-width='1' stroke-linecap='square' shape-rendering='geometricPrecision'/%3E%3C/svg%3E");
+  background-size: 80px 80px;
+  background-position: 0 0;
+  background-repeat: repeat;
 }
 
 .arklight-scrollbar-hide::-webkit-scrollbar {
@@ -475,26 +427,11 @@ const handleChatPointerMove = (event: MouseEvent) => {
 }
 
 .arklight-chat-grid {
-  background-image:
-    linear-gradient(rgba(120, 104, 72, 0.072) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(120, 104, 72, 0.072) 1px, transparent 1px);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56' fill='none'%3E%3Cpath d='M0 0.5H56M0.5 0V56M0.5 0.5L55.5 55.5M55.5 0.5L0.5 55.5' stroke='%23786848' stroke-opacity='0.11' stroke-width='1' stroke-linecap='square' shape-rendering='geometricPrecision'/%3E%3C/svg%3E");
   background-size: 56px 56px;
   background-position: 0 0;
-  opacity: 0.46;
-  animation: arklight-grid-drift 20s linear infinite;
-}
-
-.arklight-chat-grid-focus {
-  background-image:
-    linear-gradient(rgba(120, 104, 72, 0.082) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(120, 104, 72, 0.082) 1px, transparent 1px);
-  background-size: 42px 42px;
-  background-position: 0 0;
-  opacity: 0.52;
-  mask-image: radial-gradient(circle 120px at var(--grid-hover-x, 50%) var(--grid-hover-y, 50%), black 0%, rgba(0, 0, 0, 0.92) 42%, transparent 72%);
-  -webkit-mask-image: radial-gradient(circle 120px at var(--grid-hover-x, 50%) var(--grid-hover-y, 50%), black 0%, rgba(0, 0, 0, 0.92) 42%, transparent 72%);
-  transition: mask-position 120ms ease;
-  animation: arklight-grid-drift 16s linear infinite;
+  background-repeat: repeat;
+  opacity: 0.42;
 }
 
 .arklight-bubble {
@@ -518,6 +455,18 @@ const handleChatPointerMove = (event: MouseEvent) => {
 
 .arklight-bubble-user:hover {
   box-shadow: 0 16px 34px rgba(26, 26, 26, 0.16);
+}
+
+.arklight-status-strip__segment--left {
+  background: linear-gradient(90deg, #8F2A1F 0%, #A63B28 100%);
+}
+
+.arklight-status-strip__segment--center {
+  background: linear-gradient(90deg, #DEA03B 0%, #F0B649 100%);
+}
+
+.arklight-status-strip__segment--right {
+  background: linear-gradient(90deg, #4C8E8B 0%, #67B6B0 100%);
 }
 
 @keyframes arklight-spin-slow {
@@ -560,8 +509,4 @@ const handleChatPointerMove = (event: MouseEvent) => {
   to { width: 300px; }
 }
 
-@keyframes arklight-grid-drift {
-  from { background-position: 0 0, 0 0; }
-  to { background-position: 0 56px, 56px 0; }
-}
 </style>

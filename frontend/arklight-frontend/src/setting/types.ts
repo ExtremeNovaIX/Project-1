@@ -10,6 +10,7 @@ export interface FrontendSettings {
   bootAnimationEnabled: boolean;
   bootDurationMs: number;
   responseDelayMs: number;
+  shortModeEnabled: boolean;
   moteCount: number;
   backendBaseUrl: string;
 }

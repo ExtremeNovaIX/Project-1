@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import p1.infrastructure.vector.MemoryVectorLibrary;
 
 import java.util.List;
 
@@ -21,8 +22,8 @@ class EmbeddingServiceTest {
     private static final String QUERY = "query";
     private static final int MAX_RESULTS = 3;
     private static final double MIN_SCORE = 0.6;
-    private static final String SENTENCE_1 = "用户更正了关于山羊“棉花糖”眼睛颜色的记忆。经翻看旧相册确认，其眼睛在阳光下实为普通的浅棕色，而非之前描述的“夕阳下的琥珀色”。用户反思自己可能对回忆进行了美化。";
-    private static final String SENTENCE_2 = "用户小时候在乡下外婆家养了一只名叫“棉花糖”的白色山羊，它非常聪明，会自己用角顶开老旧的木栅栏门溜出去，最爱吃外婆家后院的苜蓿地，每次都会吃得肚子圆滚滚才回来。后来外婆搬到城里，棉花糖被送给了隔壁村的张大爷，在那里它成了“孩子王”，带着一群小羊满山跑。";
+    private static final String SENTENCE_1 = "李响";
+    private static final String SENTENCE_2 = "李想";
 
     @Autowired
     private EmbeddingService embeddingService;
@@ -32,7 +33,8 @@ class EmbeddingServiceTest {
 
     @Test
     void searchEmbedding_shouldUseRealEmbeddingModel() {
-        EmbeddingSearchResult<TextSegment> result = embeddingService.searchEmbedding(QUERY, MAX_RESULTS, MIN_SCORE);
+        EmbeddingSearchResult<TextSegment> result =
+                embeddingService.searchEmbedding("default", MemoryVectorLibrary.ARCHIVE, QUERY, MAX_RESULTS, MIN_SCORE);
 
         assertNotNull(result);
         assertNotNull(result.matches());

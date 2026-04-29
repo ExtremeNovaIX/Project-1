@@ -11,7 +11,7 @@ function Test-BenchmarkHealth {
     param([string]$BaseUrl)
 
     try {
-        $response = Invoke-RestMethod -Method GET -Uri ($BaseUrl.TrimEnd("/") + "/api/benchmark/memory/health") -TimeoutSec 5
+        $response = Invoke-RestMethod -Method GET -Uri ($BaseUrl.TrimEnd("/") + "/api/benchmark/halumem/health") -TimeoutSec 5
         return $response.status -eq "ok"
     } catch {
         return $false

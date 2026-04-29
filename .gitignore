@@ -12,3 +12,6 @@ backend/benchmark/longmemeval_m_cleaned.json
 backend/benchmark/longmemeval_s_cleaned.json
 /backend/benchmark/longmemeval/__pycache__
 /backend/benchmark/out
+/backend/benchmark/halumem/__pycache__/
+backend/benchmark/halumem/*.jsonl
+/backend/benchmark/halumem/__pycache__

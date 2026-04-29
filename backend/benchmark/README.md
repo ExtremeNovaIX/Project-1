@@ -1,142 +1,108 @@
 # Benchmark Harness
 
-This directory adds a standalone benchmark path for the memory system.
-It does not replace the normal chat flow and it only exposes extra HTTP endpoints when the Spring profile `benchmark` is enabled.
+This directory now hosts a `HaluMem`-focused benchmark path.
+It is designed to exercise the real memory extraction and write pipeline instead of the old raw transcript retrieval-only shortcut.
 
-## What It Benchmarks
+The normal chat flow is unchanged.
+Extra HTTP endpoints are only exposed when the Spring profile `benchmark` is enabled.
 
-The current harness targets retrieval-quality comparison across memory systems.
-It is intentionally narrower than the full RP chain.
+## What It Measures
 
-Current scope:
+The current benchmark path measures three layers:
 
-- ingest benchmark transcripts into the existing fact-extraction -> archive -> graph -> vector pipeline
-- preserve benchmark provenance through `sourceRefs`
-- search through the existing `MemorySearchTools`
-- export ranked source-session hits for retrieval-style benchmarks such as `LongMemEval`
+- memory extraction quality from raw dialogue
+- memory state fidelity after sequential session updates
+- grounded question answering using retrieved memory context
 
-This first version focuses on retrieval metrics against gold source sessions.
-That makes it stable and directly comparable.
+That means the benchmark now touches:
+
+- `MemoryCompressionPipeline`
+- `FactExtractionService`
+- `MemoryWriteService`
+- `MemorySearchTools`
+- a benchmark-only QA layer
+- a benchmark-only judge layer
+
+It does not depend on `RpAgent`, `TaskSupervisor`, or checker flow control.
 
 ## Benchmark Endpoints
 
 When the app starts with profile `benchmark`, these endpoints are enabled:
 
-- `GET /api/benchmark/memory/health`
-- `POST /api/benchmark/memory/reset`
-- `POST /api/benchmark/memory/ingest`
-- `POST /api/benchmark/memory/search`
+- `GET /api/benchmark/halumem/health`
+- `POST /api/benchmark/halumem/reset`
+- `POST /api/benchmark/halumem/ingest-session`
+- `POST /api/benchmark/halumem/answer`
+- `POST /api/benchmark/halumem/judge/memory`
+- `POST /api/benchmark/halumem/judge/qa`
 
-The normal `/api/chat/send` flow is unchanged.
+## Start And Stop
 
-## Start Server
-
-From the repo root:
-
-```powershell
-.\benchmark\Start-BenchmarkServer.ps1
-```
-
-Or manually:
-
-```powershell
-.\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=benchmark"
-```
-
-If you prefer double-click startup on Windows, use:
+Start the benchmark server:
 
 ```text
 benchmark\Start-BenchmarkServer.cmd
 ```
 
-To stop the benchmark server explicitly:
+Or from PowerShell:
+
+```powershell
+.\benchmark\Start-BenchmarkServer.ps1
+```
+
+Stop it explicitly:
 
 ```text
 benchmark\Stop-BenchmarkServer.cmd
 ```
 
-## LongMemEval Retrieval Run
+## One-Click HaluMem Run
 
-The included script runs a retrieval-only pass against a LongMemEval-style JSON file and writes per-sample plus aggregate metrics.
+Place one of these files in one of the supported locations:
 
-```powershell
-.\benchmark\longmemeval\Invoke-LongMemEvalRetrieval.ps1 `
-  -DatasetPath "C:\benchmarks\longmemeval.json" `
-  -OutputPath "C:\benchmarks\longmemeval-result.json"
-```
+- `benchmark\halumem\HaluMem-Medium.jsonl`
+- `benchmark\halumem\HaluMem-Easy.jsonl`
+- `benchmark\halumem\HaluMem-Hard.jsonl`
+- `benchmark\HaluMem-Medium.jsonl`
+- `benchmark\data\halumem\HaluMem-Medium.jsonl`
 
-Optional parameters:
-
-- `-ServerUrl` defaults to `http://127.0.0.1:18080`
-- `-RunId` defaults to a timestamp-based id
-- `-BatchMessageCount` is optional
-
-The PowerShell wrapper now delegates dataset parsing to Python so large benchmark files do not get stuck in `ConvertFrom-Json`.
-The runner prints progress updates as it processes samples.
-
-## One-Click Run
-
-If your dataset files are already placed in one of these locations:
-
-- `benchmark\data\longmemeval\`
-- `benchmark\longmemeval\`
-- `benchmark\`
-
-you can run everything with:
+Then run:
 
 ```text
-benchmark\Run-LongMemEval-OneClick.cmd
+benchmark\Run-HaluMem-OneClick.cmd
 ```
 
-It will:
+The script will:
 
 - start the benchmark Spring profile if needed
-- wait for `/api/benchmark/memory/health`
-- by default run:
-  - `longmemeval_oracle.json`
-  - `longmemeval_s_cleaned.json`
-- write per-dataset outputs plus a merged summary under:
-  - `benchmark\out\longmemeval\`
+- wait for `/api/benchmark/halumem/health`
+- prefer `HaluMem-Medium.jsonl` when multiple files exist
+- write outputs under:
+  - `benchmark\out\halumem\`
 
-If you explicitly want the medium split too, run:
+## Direct Invocation
+
+If you want to pass the dataset path explicitly:
 
 ```powershell
-.\benchmark\Run-LongMemEval-OneClick.ps1 -Datasets oracle,s_cleaned,m_cleaned
+.\benchmark\halumem\Invoke-HaluMemBenchmark.ps1 `
+  -DatasetPath "C:\benchmarks\HaluMem-Medium.jsonl" `
+  -OutputDir ".\benchmark\out\halumem"
 ```
 
-If you only want the practical comparison split, use:
+## Output Files
 
-```text
-benchmark\Run-LongMemEval-S-OneClick.cmd
-```
+The runner writes:
 
-The script expects a LongMemEval-like shape and uses flexible field resolution for:
+- `halumem_<dataset>_<runId>.jsonl`
+  - one JSON object per benchmark user
+- `halumem_<dataset>_<runId>.summary.json`
+  - aggregate extraction/state/QA metrics
+- `halumem_<dataset>_<runId>.progress.json`
+  - progress metadata while the run is active
 
-- `question_id` / `questionId` / `id`
-- `question` / `query`
-- `answer_session_ids` / `answerSessionIds`
-- `haystack_sessions` / `haystackSessions` / `sessions`
+## Notes
 
-Each source session is ingested into one backend benchmark session namespace, and the backend stores provenance as:
-
-- `session:<sourceSessionId>`
-- `transcript:<transcriptId>`
-
-The output includes:
-
-- `hit@1`, `hit@3`, `hit@5`
-- `recall@1`, `recall@3`, `recall@5`
-- per-sample retrieved source sessions
-- raw backend search response snippets
-
-## Comparison Strategy
-
-For horizontal comparison, keep these fixed:
-
-- same benchmark split
-- same retrieval metric
-- same ingest granularity
-- same backend model and embedding model
-- same batch size
-
-If you later want answer-level comparison, layer a fixed answerer and judge on top of the search output instead of changing the memory benchmark path itself.
+- This path intentionally replaces the old `LongMemEval` retrieval-only harness.
+- The benchmark still runs against the isolated `benchmark` profile storage and port.
+- Judge quality depends on the configured chat model, because extraction/state/QA scoring is model-judged.

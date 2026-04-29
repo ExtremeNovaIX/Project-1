@@ -1,4 +1,4 @@
-package p1.benchmark.memory;
+package p1.benchmark.halumem;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -14,19 +14,18 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 @RequiredArgsConstructor
-public class MemoryBenchmarkSessionCleaner {
+public class HaluMemSessionCleaner {
 
     private final AssistantProperties assistantProperties;
     private final ChatLogRepository chatLogRepository;
     private final SummaryCacheManager summaryCacheManager;
 
-    public BenchmarkResetResponse reset(BenchmarkResetRequest request) {
+    public HaluMemResetResponse reset(HaluMemResetRequest request) {
         Set<String> sessionIds = new LinkedHashSet<>();
         if (request != null && request.sessionIds() != null) {
             for (String sessionId : request.sessionIds()) {
@@ -45,7 +44,7 @@ public class MemoryBenchmarkSessionCleaner {
             deleteTree(vectorSessionRoot(sessionId), deletedFileCount);
         }
 
-        return new BenchmarkResetResponse(
+        return new HaluMemResetResponse(
                 sessionIds.size(),
                 sessionIds.size(),
                 deletedFileCount.get()

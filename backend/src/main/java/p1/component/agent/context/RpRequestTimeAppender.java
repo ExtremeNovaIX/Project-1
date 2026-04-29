@@ -4,15 +4,14 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import p1.model.ChatLogEntity;
 import p1.service.ChatLogRepository;
+import p1.utils.PromptTimeBucketUtil;
 import p1.utils.SessionUtil;
 
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,8 +21,6 @@ import java.util.List;
 @Component
 @RequiredArgsConstructor
 public class RpRequestTimeAppender {
-    private static final DateTimeFormatter PROMPT_TIME_FORMATTER =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final ChatLogRepository chatLogRepository;
 
@@ -33,8 +30,7 @@ public class RpRequestTimeAppender {
         }
 
         List<ChatMessage> messages = request.messages();
-        int lastIndex = messages.size() - 1;
-        ChatMessage lastMessage = messages.get(lastIndex);
+        ChatMessage lastMessage = messages.get(messages.size() - 1);
         if (!(lastMessage instanceof UserMessage)) {
             return request;
         }
@@ -55,24 +51,19 @@ public class RpRequestTimeAppender {
     }
 
     private String buildDynamicMemoryContext(String sessionId) {
-
-        String currentTime = formatPromptTime(LocalDateTime.now());
-        String lastUserMessageTime = findPreviousUserMessageTime(sessionId);
-        String timeContext = "<time>\n当前时间：" + currentTime + "\n上次用户发消息时间：" + lastUserMessageTime + "\n</time>";
-        return (timeContext.trim());
+        LocalDateTime now = LocalDateTime.now();
+        String currentTime = PromptTimeBucketUtil.formatQuarterHour(now);
+        String lastUserMessageTime = findPreviousUserMessageTime(sessionId, now);
+        return ("<time>\n当前时间：" + currentTime + "\n上次用户发消息时间：" + lastUserMessageTime + "\n</time>").trim();
     }
 
-    private String findPreviousUserMessageTime(String sessionId) {
+    private String findPreviousUserMessageTime(String sessionId, LocalDateTime now) {
         List<ChatLogEntity> userMessages =
                 chatLogRepository.findTop2BySessionIdAndRoleOrderByCreatedAtDesc(sessionId, "USER");
         if (userMessages.size() < 2) {
             return "（暂无历史用户消息）";
         }
         LocalDateTime time = userMessages.get(1).getCreatedAt();
-        return formatPromptTime(time);
-    }
-
-    private String formatPromptTime(@NonNull LocalDateTime time) {
-        return time.format(PROMPT_TIME_FORMATTER);
+        return PromptTimeBucketUtil.formatLastUserMessageTime(now, time);
     }
 }

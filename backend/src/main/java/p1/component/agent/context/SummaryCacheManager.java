@@ -3,6 +3,7 @@ package p1.component.agent.context;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import p1.config.prop.AssistantProperties;
+import p1.utils.PromptTimeBucketUtil;
 
 import java.time.LocalDateTime;
 import java.util.LinkedList;
@@ -15,32 +16,49 @@ import java.util.concurrent.ConcurrentHashMap;
 public class SummaryCacheManager {
 
     private final AssistantProperties props;
-    private final Map<String, LinkedList<String>> summaryCache = new ConcurrentHashMap<>();
+    private final Map<String, LinkedList<SummaryEntry>> summaryCache = new ConcurrentHashMap<>();
 
     public String getSummary(String sessionId) {
-        List<String> queue = summaryCache.get(sessionId);
-        if (queue == null || queue.isEmpty()) return "（暂无摘要）";
-
-        StringBuilder sb = new StringBuilder("以下是之前的对话摘要：\n");
-        for (int i = 0; i < queue.size(); i++) {
-            sb.append(String.format("摘要 %d: %s\n", i + 1, queue.get(i)));
+        List<SummaryEntry> queue = summaryCache.get(sessionId);
+        if (queue == null || queue.isEmpty()) {
+            return "（暂时无摘要）";
         }
-        return sb.toString();
+
+        StringBuilder builder = new StringBuilder("以下是之前的对话摘要：\n");
+        for (int index = 0; index < queue.size(); index++) {
+            SummaryEntry entry = queue.get(index);
+            builder.append("摘要 ")
+                    .append(index + 1)
+                    .append(": ")
+                    .append(entry.summary())
+                    .append("\n时间：")
+                    .append(PromptTimeBucketUtil.formatQuarterHour(entry.createdAt()))
+                    .append("\n");
+        }
+        return builder.toString();
     }
 
     public void updateSummary(String sessionId, String newSummary) {
-        summaryCache.computeIfAbsent(sessionId, k -> new LinkedList<>());
-        LinkedList<String> queue = summaryCache.get(sessionId);
+        updateSummary(sessionId, newSummary, LocalDateTime.now());
+    }
+
+    public void updateSummary(String sessionId, String newSummary, LocalDateTime createdAt) {
+        if (newSummary == null || newSummary.isBlank()) {
+            return;
+        }
+
+        summaryCache.computeIfAbsent(sessionId, ignored -> new LinkedList<>());
+        LinkedList<SummaryEntry> queue = summaryCache.get(sessionId);
         if (queue.size() >= props.getChatMemory().getContextMaxSummaryCount()) {
             queue.removeFirst();
         }
-        LocalDateTime now = LocalDateTime.now();
-        String timestamp = now.format(java.time.format.DateTimeFormatter.ofPattern("[yyyy-MM-dd HH:mm:ss]"));
-        newSummary = timestamp + newSummary;
-        queue.addLast(newSummary);
+        queue.addLast(new SummaryEntry(newSummary.trim(), createdAt == null ? LocalDateTime.now() : createdAt));
     }
 
     public void clear(String sessionId) {
         summaryCache.remove(sessionId);
+    }
+
+    private record SummaryEntry(String summary, LocalDateTime createdAt) {
     }
 }

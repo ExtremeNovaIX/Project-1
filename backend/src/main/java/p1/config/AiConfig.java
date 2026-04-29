@@ -24,6 +24,9 @@ import p1.component.agent.memory.ChatMemoryAppender;
 import p1.component.agent.memory.FactEvaluatorAiService;
 import p1.component.agent.memory.FactExtractionAiService;
 import p1.component.agent.memory.MemoryAsyncCompressor;
+import p1.benchmark.halumem.HaluMemMemoryJudgeAiService;
+import p1.benchmark.halumem.HaluMemQaAnswerAiService;
+import p1.benchmark.halumem.HaluMemQaJudgeAiService;
 import p1.component.agent.task.checker.TaskCheckerAiService;
 import p1.component.agent.tools.CallSolverTool;
 import p1.component.log.AiServiceLoggingListener;
@@ -119,6 +122,27 @@ public class AiConfig {
     public FactEvaluatorAiService factScoringAiService(@Qualifier("backendChatModel") ChatModel backendChatModel) {
         return AiServices.builder(FactEvaluatorAiService.class)
                 .chatModel(backendChatModel)
+                .build();
+    }
+
+    @Bean
+    public HaluMemQaAnswerAiService haluMemQaAnswerAiService(@Qualifier("supervisorChatModel") ChatModel supervisorChatModel) {
+        return AiServices.builder(HaluMemQaAnswerAiService.class)
+                .chatModel(supervisorChatModel)
+                .build();
+    }
+
+    @Bean
+    public HaluMemMemoryJudgeAiService haluMemMemoryJudgeAiService(@Qualifier("supervisorChatModel") ChatModel supervisorChatModel) {
+        return AiServices.builder(HaluMemMemoryJudgeAiService.class)
+                .chatModel(supervisorChatModel)
+                .build();
+    }
+
+    @Bean
+    public HaluMemQaJudgeAiService haluMemQaJudgeAiService(@Qualifier("supervisorChatModel") ChatModel supervisorChatModel) {
+        return AiServices.builder(HaluMemQaJudgeAiService.class)
+                .chatModel(supervisorChatModel)
                 .build();
     }
 

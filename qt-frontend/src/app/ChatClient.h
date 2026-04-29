@@ -15,6 +15,10 @@ class ChatClient final : public QObject {
   public:
     explicit ChatClient(QObject *parent = nullptr);
 
+    // 获取 QNetworkAccessManager 实例用于自定义请求
+    // Get the QNetworkAccessManager instance for custom requests
+    QNetworkAccessManager* networkManager() const;
+
     // 发起一次异步 POST 请求；Qt 网络请求不会阻塞 UI 线程。
     // Start one asynchronous POST request; Qt networking does not block the UI
     // thread.

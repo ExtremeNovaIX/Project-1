@@ -5,8 +5,12 @@
 #include "MessageParser.h"
 
 #include <QDateTime>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
 #include <QRandomGenerator>
 #include <QTimer>
+#include <QUrl>
 #include <QtGlobal>
 
 ChatSessionController::ChatSessionController(FrontendSettings *settings,
@@ -57,6 +61,7 @@ ChatSessionController::ChatSessionController(FrontendSettings *settings,
     connect(m_settings, &FrontendSettings::settingsChanged, this, [this]() {
         m_settings->save();
         syncCharacterState();
+        checkConnection();
     });
 
     // 构造时也做一次默认角色选择，保证 QML 初始界面有合理状态。
@@ -70,6 +75,10 @@ ChatSessionController::ChatSessionController(FrontendSettings *settings,
     }
 
     syncCharacterState();
+
+    // 初始化连接状态并启动检测
+    setConnectionStatus(QStringLiteral("Connecting..."));
+    QTimer::singleShot(500, this, &ChatSessionController::checkConnectionStatus);
 }
 
 ChatMessageModel *ChatSessionController::messages() {
@@ -91,9 +100,13 @@ QString ChatSessionController::activeEmotion() const {
 }
 
 QString ChatSessionController::activeCharacterImagePath() const {
-    // 让角色目录根据“角色名 + 当前表情”决定实际图片 URL。
+    // 让角色目录根据"角色名 + 当前表情"决定实际图片 URL。
     // Let the catalog resolve the actual image URL from "character name + active emotion".
     return m_catalog->imageFor(m_settings->characterName(), m_activeEmotion);
+}
+
+QString ChatSessionController::connectionStatus() const {
+    return m_connectionStatus;
 }
 
 void ChatSessionController::sendMessage(const QString &content) {
@@ -183,6 +196,8 @@ void ChatSessionController::appendLocalMessage(const QString &role, const QStrin
 }
 
 void ChatSessionController::scheduleAssistantSegments(const QStringList &segments) {
+    setConnectionStatus(QStringLiteral("Connected"));
+
     // 后端正常返回但没有可见文本时，给用户一个明确提示。
     // If the backend succeeds but produces no visible text, show a clear message to the user.
     if (segments.isEmpty()) {
@@ -253,6 +268,37 @@ void ChatSessionController::setStatusText(const QString &value) {
     emit statusTextChanged();
 }
 
+void ChatSessionController::setConnectionStatus(const QString &value) {
+    if (m_connectionStatus == value) {
+        return;
+    }
+    m_connectionStatus = value;
+    emit connectionStatusChanged();
+}
+
+void ChatSessionController::checkConnectionStatus() {
+    const QUrl statusUrl(m_settings->backendBaseUrl() + QStringLiteral("/api/chat"));
+    if (!statusUrl.isValid()) {
+        setConnectionStatus(QStringLiteral("Disconnected"));
+        return;
+    }
+
+    QNetworkRequest request(statusUrl);
+    request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
+    
+    QNetworkReply *reply = m_chatClient.networkManager()->get(request);
+    
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        const int statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        if (reply->error() == QNetworkReply::NoError && statusCode >= 200 && statusCode < 400) {
+            setConnectionStatus(QStringLiteral("Connected"));
+        } else {
+            setConnectionStatus(QStringLiteral("Disconnected"));
+        }
+        reply->deleteLater();
+    });
+}
+
 void ChatSessionController::syncCharacterState() {
     // 切换角色或刷新目录时，把当前表情回到角色默认表情。
     // When switching characters or reloading the catalog, reset to the character's default emotion.
@@ -270,4 +316,10 @@ void ChatSessionController::syncCharacterState() {
 
     m_activeEmotion = nextEmotion;
     emit activeCharacterChanged();
+}
+
+void ChatSessionController::checkConnection() {
+    // 手动触发连接状态检测
+    setConnectionStatus(QStringLiteral("Checking..."));
+    checkConnectionStatus();
 }

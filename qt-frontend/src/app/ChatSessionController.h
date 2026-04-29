@@ -21,6 +21,7 @@ class ChatSessionController final : public QObject {
     Q_PROPERTY(QString statusText READ statusText NOTIFY statusTextChanged)
     Q_PROPERTY(QString activeEmotion READ activeEmotion NOTIFY activeCharacterChanged)
     Q_PROPERTY(QString activeCharacterImagePath READ activeCharacterImagePath NOTIFY activeCharacterChanged)
+    Q_PROPERTY(QString connectionStatus READ connectionStatus NOTIFY connectionStatusChanged)
 
 public:
     ChatSessionController(FrontendSettings *settings,
@@ -34,6 +35,7 @@ public:
     QString statusText() const;
     QString activeEmotion() const;
     QString activeCharacterImagePath() const;
+    QString connectionStatus() const;
 
     // Q_INVOKABLE 表示 QML 可以调用这些 C++ 方法。
     // Q_INVOKABLE means QML can call these C++ methods.
@@ -41,6 +43,7 @@ public:
     Q_INVOKABLE void startStoryReplay();
     Q_INVOKABLE void clearMessages();
     Q_INVOKABLE void selectCharacter(const QString &characterName);
+    Q_INVOKABLE void checkConnection();
 
 signals:
     // NOTIFY 信号必须在属性变化后发出，QML 绑定才会重新计算。
@@ -48,6 +51,7 @@ signals:
     void busyChanged();
     void statusTextChanged();
     void activeCharacterChanged();
+    void connectionStatusChanged();
 
 private:
     // 私有辅助函数封装会话内部逻辑，避免 QML 直接操作底层细节。
@@ -58,6 +62,8 @@ private:
     void setBusy(bool value);
     void setStatusText(const QString &value);
     void syncCharacterState();
+    void setConnectionStatus(const QString &value);
+    void checkConnectionStatus();
 
     // settings/catalog 由 main.cpp 创建，本类只保存指针，不拥有它们。
     // settings/catalog are created in main.cpp; this class stores pointers but does not own them.
@@ -71,4 +77,5 @@ private:
     bool m_busy = false;
     QString m_statusText;
     QString m_activeEmotion;
+    QString m_connectionStatus;
 };

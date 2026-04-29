@@ -63,6 +63,10 @@ ChatClient::ChatClient(QObject *parent)
     , m_network(new QNetworkAccessManager(this)) {
 }
 
+QNetworkAccessManager* ChatClient::networkManager() const {
+    return m_network;
+}
+
 QString errorMessageFromBody(const QByteArray &body, const QString &fallback) {
     QJsonParseError parseError;
     const QJsonDocument document = QJsonDocument::fromJson(body, &parseError);

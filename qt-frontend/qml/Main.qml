@@ -12,7 +12,7 @@ ApplicationWindow {
     minimumHeight: Math.round(640 * uiScale)
     visible: true
     title: "ArkLight Qt"
-    flags: Qt.Window | Qt.FramelessWindowHint
+    flags: Qt.Window
     color: paletteToken.window
 
     property real uiScale: frontendSettings.uiScalePercent / 100
@@ -27,6 +27,16 @@ ApplicationWindow {
 
     function trText(en, zh) {
         return chineseUi ? zh : en
+    }
+
+    function compactBackendUrl(value) {
+        var text = (value || "").trim()
+        if (text.length === 0) {
+            return trText("Backend unset", "后端未设置")
+        }
+        text = text.replace(/^https?:\/\//i, "")
+        text = text.replace(/\/+$/, "")
+        return text
     }
 
     function languageOptions() {
@@ -83,42 +93,42 @@ ApplicationWindow {
     }
 
     component AppButton: Button {
-        id: button
-        property bool primary: false
-        focusPolicy: Qt.NoFocus
-        leftPadding: sp(16)
-        rightPadding: sp(16)
-        topPadding: sp(8)
-        bottomPadding: sp(8)
-        font.pixelSize: sp(14)
-        font.weight: Font.Black
-        font.capitalization: Font.AllUppercase
-        palette {
-            button: button.primary ? paletteToken.accent : paletteToken.card
-            buttonText: button.primary ? paletteToken.accentText : paletteToken.text
-            highlight: paletteToken.accentSoft
-            highlightedText: paletteToken.text
+            id: button
+            property bool primary: false
+            focusPolicy: Qt.NoFocus
+            leftPadding: sp(16)
+            rightPadding: sp(16)
+            topPadding: sp(8)
+            bottomPadding: sp(8)
+            font.pixelSize: sp(14)
+            font.weight: Font.Black
+            font.capitalization: Font.AllUppercase
+            palette {
+                button: button.primary ? paletteToken.accent : paletteToken.card
+                buttonText: button.primary ? paletteToken.accentText : paletteToken.text
+                highlight: paletteToken.accentSoft
+                highlightedText: paletteToken.text
+            }
+            contentItem: Text {
+                text: button.text
+                font.pixelSize: button.font.pixelSize
+                font.weight: button.font.weight
+                font.capitalization: button.font.capitalization
+                font.letterSpacing: sp(1)
+                color: button.primary ? (button.down || button.hovered ? paletteToken.accentText : paletteToken.inkInverse)
+                                      : (button.down || button.hovered ? paletteToken.inkInverse : paletteToken.text)
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+                elide: Text.ElideRight
+            }
+            background: Rectangle {
+                radius: 0
+                color: button.hovered ? paletteToken.accent : (button.primary ? (button.down ? paletteToken.accent : paletteToken.ink)
+                                                                             : (button.down ? paletteToken.ink : paletteToken.card))
+                border.color: paletteToken.border
+                border.width: 2
+            }
         }
-        contentItem: Text {
-            text: button.text
-            font.pixelSize: button.font.pixelSize
-            font.weight: button.font.weight
-            font.capitalization: button.font.capitalization
-            font.letterSpacing: sp(1)
-            color: button.primary ? (button.down || button.hovered ? paletteToken.accentText : paletteToken.inkInverse)
-                                  : (button.down || button.hovered ? paletteToken.inkInverse : paletteToken.text)
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-            elide: Text.ElideRight
-        }
-        background: Rectangle {
-            radius: 0
-            color: button.primary ? (button.down || button.hovered ? paletteToken.accent : paletteToken.ink)
-                                  : (button.down || button.hovered ? paletteToken.ink : paletteToken.card)
-            border.color: paletteToken.border
-            border.width: 2
-        }
-    }
 
     component SettingField: TextField {
         id: field
@@ -340,117 +350,16 @@ ApplicationWindow {
         }
     }
 
-    component WindowButton: Button {
-        id: titleButton
-        property bool closeButton: false
-        focusPolicy: Qt.NoFocus
-        Layout.preferredWidth: sp(46)
-        Layout.fillHeight: true
-        padding: 0
-        font.pixelSize: sp(13)
-        palette {
-            button: paletteToken.panel
-            buttonText: paletteToken.text
-            highlight: paletteToken.accentSoft
-            highlightedText: paletteToken.text
-        }
-        contentItem: Text {
-            text: titleButton.text
-            color: titleButton.closeButton && titleButton.hovered ? "#ffffff" : (titleButton.hovered ? paletteToken.inkInverse : paletteToken.text)
-            font: titleButton.font
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-        }
-        background: Rectangle {
-            color: titleButton.closeButton && titleButton.hovered ? "#d83b3b"
-                  : (titleButton.down || titleButton.hovered ? paletteToken.ink : paletteToken.panel)
-        }
-    }
-
     header: Rectangle {
         color: paletteToken.panel
-        implicitHeight: sp(106)
+        implicitHeight: sp(74)
         border.color: paletteToken.border
         border.width: 2
 
-        ColumnLayout {
+        RowLayout {
             anchors.fill: parent
-            spacing: 0
-
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: sp(32)
-                color: paletteToken.panel
-
-                RowLayout {
-                    anchors.fill: parent
-                    spacing: 0
-
-                    Item {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.leftMargin: sp(10)
-                            spacing: sp(8)
-
-                            Rectangle {
-                                Layout.preferredWidth: sp(16)
-                                Layout.preferredHeight: sp(16)
-                                radius: 0
-                                color: paletteToken.accent
-                                border.color: paletteToken.border
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: "A"
-                                    color: paletteToken.accentText
-                                    font.pixelSize: sp(11)
-                                    font.bold: true
-                                }
-                            }
-
-                            Label {
-                                Layout.fillWidth: true
-                                text: window.title
-                                color: paletteToken.text
-                                elide: Text.ElideRight
-                                font.pixelSize: sp(12)
-                            }
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            acceptedButtons: Qt.LeftButton
-                            onPressed: window.startSystemMove()
-                            onDoubleClicked: window.visibility === Window.Maximized ? window.showNormal() : window.showMaximized()
-                        }
-                    }
-
-                    WindowButton {
-                        text: "-"
-                        onClicked: window.showMinimized()
-                    }
-
-                    WindowButton {
-                        text: window.visibility === Window.Maximized ? "[]" : "[ ]"
-                        onClicked: window.visibility === Window.Maximized ? window.showNormal() : window.showMaximized()
-                    }
-
-                    WindowButton {
-                        text: "x"
-                        closeButton: true
-                        onClicked: window.close()
-                    }
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.preferredHeight: sp(74)
-                Layout.margins: sp(16)
-                spacing: sp(14)
+            anchors.margins: sp(16)
+            spacing: sp(14)
 
                 Rectangle {
                     Layout.preferredWidth: sp(44)
@@ -483,7 +392,7 @@ ApplicationWindow {
 
                     Label {
                         Layout.fillWidth: true
-                        text: trText("Session: ", "会话：") + frontendSettings.sessionId + "    " + trText("Backend: ", "后端：") + frontendSettings.backendBaseUrl
+                        text: chatSession.statusText.length > 0 ? chatSession.statusText : frontendSettings.operatorName
                         color: paletteToken.muted
                         font.pixelSize: sp(12)
                         elide: Text.ElideRight
@@ -500,7 +409,6 @@ ApplicationWindow {
                     primary: true
                     onClicked: settingsDialog.open()
                 }
-            }
         }
     }
 
@@ -1068,7 +976,7 @@ ApplicationWindow {
 
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: sp(56)
+                    Layout.preferredHeight: sp(62)
                     radius: 0
                     color: Qt.rgba(paletteToken.card.r, paletteToken.card.g, paletteToken.card.b, darkMode ? 0.72 : 0.52)
                     border.color: paletteToken.border
@@ -1087,24 +995,72 @@ ApplicationWindow {
                         }
 
                         Label {
-                            Layout.fillWidth: true
-                            Layout.minimumWidth: 0
-                            text: chatSession.statusText.length > 0 ? chatSession.statusText : trText("Ready.", "就绪。")
-                            color: chatSession.busy ? paletteToken.warn : paletteToken.muted
+                            Layout.preferredWidth: sp(150)
+                            Layout.minimumWidth: sp(86)
+                            text: trText("Session ", "会话 ") + frontendSettings.sessionId
+                            color: paletteToken.muted
                             elide: Text.ElideRight
                             verticalAlignment: Text.AlignVCenter
-                            font.pixelSize: sp(14)
+                            font.pixelSize: sp(11)
                             font.capitalization: Font.AllUppercase
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: sp(120)
+                            spacing: sp(2)
+
+                            Label {
+                                Layout.fillWidth: true
+                                text: trText("Backend ", "后端 ") + compactBackendUrl(frontendSettings.backendBaseUrl)
+                                color: paletteToken.muted
+                                elide: Text.ElideRight
+                                font.pixelSize: sp(10)
+                                font.capitalization: Font.AllUppercase
+
+                                ToolTip.visible: backendHover.containsMouse
+                                ToolTip.text: frontendSettings.backendBaseUrl
+
+                                MouseArea {
+                                    id: backendHover
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    acceptedButtons: Qt.NoButton
+                                }
+                            }
+
+                            Label {
+                                Layout.fillWidth: true
+                                text: trText("Status ", "状态 ") + chatSession.connectionStatus
+                                color: chatSession.busy ? paletteToken.warn : paletteToken.muted
+                                elide: Text.ElideRight
+                                font.pixelSize: sp(10)
+                                font.capitalization: Font.AllUppercase
+                            }
+                        }
+
+                        AppButton {
+                            text: trText("Refresh", "刷新")
+                            leftPadding: sp(12)
+                            rightPadding: sp(12)
+                            font.pixelSize: sp(12)
+                            onClicked: chatSession.checkConnection()
                         }
 
                         AppButton {
                             text: trText("Story Replay", "故事回放")
+                            leftPadding: sp(12)
+                            rightPadding: sp(12)
+                            font.pixelSize: sp(12)
                             enabled: !chatSession.busy
                             onClicked: chatSession.startStoryReplay()
                         }
 
                         AppButton {
                             text: trText("Clear", "清空")
+                            leftPadding: sp(12)
+                            rightPadding: sp(12)
+                            font.pixelSize: sp(12)
                             onClicked: chatSession.clearMessages()
                         }
                     }

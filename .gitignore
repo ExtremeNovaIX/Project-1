@@ -8,7 +8,6 @@
 /build/
 /backend/target/
 /frontend/arklight-frontend/dist/
-/qt-frontend/build/
 /qt-frontend/cmake-build-*/
 
 # Runtime data and logs

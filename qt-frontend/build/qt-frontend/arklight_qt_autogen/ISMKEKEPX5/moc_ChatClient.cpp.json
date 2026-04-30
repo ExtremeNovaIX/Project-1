@@ -1,0 +1,73 @@
+{
+    "classes": [
+        {
+            "className": "ChatClient",
+            "final": true,
+            "lineNumber": 12,
+            "object": true,
+            "qualifiedClassName": "ChatClient",
+            "signals": [
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "segments",
+                            "type": "QStringList"
+                        }
+                    ],
+                    "index": 0,
+                    "lineNumber": 42,
+                    "name": "replyReady",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "message",
+                            "type": "QString"
+                        }
+                    ],
+                    "index": 1,
+                    "lineNumber": 46,
+                    "name": "requestFailed",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "summary",
+                            "type": "QString"
+                        }
+                    ],
+                    "index": 2,
+                    "lineNumber": 48,
+                    "name": "storyReplayReady",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "message",
+                            "type": "QString"
+                        }
+                    ],
+                    "index": 3,
+                    "lineNumber": 49,
+                    "name": "storyReplayFailed",
+                    "returnType": "void"
+                }
+            ],
+            "superClasses": [
+                {
+                    "access": "public",
+                    "name": "QObject"
+                }
+            ]
+        }
+    ],
+    "inputFile": "ChatClient.h",
+    "outputRevision": 69
+}

@@ -1,0 +1,42 @@
+{
+    "classes": [
+        {
+            "className": "ChatMessageModel",
+            "enums": [
+                {
+                    "isClass": false,
+                    "isFlag": false,
+                    "lineNumber": 29,
+                    "name": "Roles",
+                    "values": [
+                        "IdRole",
+                        "RoleRole",
+                        "ContentRole",
+                        "EmotionRole"
+                    ]
+                }
+            ],
+            "final": true,
+            "lineNumber": 23,
+            "methods": [
+                {
+                    "access": "public",
+                    "index": 0,
+                    "lineNumber": 47,
+                    "name": "clear",
+                    "returnType": "void"
+                }
+            ],
+            "object": true,
+            "qualifiedClassName": "ChatMessageModel",
+            "superClasses": [
+                {
+                    "access": "public",
+                    "name": "QAbstractListModel"
+                }
+            ]
+        }
+    ],
+    "inputFile": "ChatMessageModel.h",
+    "outputRevision": 69
+}

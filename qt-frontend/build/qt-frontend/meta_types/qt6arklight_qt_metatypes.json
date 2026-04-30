@@ -1,0 +1,1045 @@
+[
+    {
+        "classes": [
+            {
+                "className": "CharacterCatalog",
+                "final": true,
+                "lineNumber": 11,
+                "methods": [
+                    {
+                        "access": "public",
+                        "index": 1,
+                        "lineNumber": 26,
+                        "name": "reload",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 2,
+                        "isConst": true,
+                        "lineNumber": 27,
+                        "name": "openCharactersFolder",
+                        "returnType": "bool"
+                    },
+                    {
+                        "access": "public",
+                        "index": 3,
+                        "isConst": true,
+                        "lineNumber": 28,
+                        "name": "characterNames",
+                        "returnType": "QStringList"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "characterName",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 4,
+                        "isConst": true,
+                        "lineNumber": 29,
+                        "name": "defaultEmotion",
+                        "returnType": "QString"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "characterName",
+                                "type": "QString"
+                            },
+                            {
+                                "name": "emotion",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 5,
+                        "isConst": true,
+                        "lineNumber": 30,
+                        "name": "imageFor",
+                        "returnType": "QString"
+                    }
+                ],
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 13,
+                        "name": "characters",
+                        "notify": "charactersChanged",
+                        "override": false,
+                        "read": "characters",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QVariantList",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 14,
+                        "name": "charactersPath",
+                        "notify": "charactersChanged",
+                        "override": false,
+                        "read": "charactersPath",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "CharacterCatalog",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 35,
+                        "name": "charactersChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "CharacterCatalog.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "ChatClient",
+                "final": true,
+                "lineNumber": 12,
+                "object": true,
+                "qualifiedClassName": "ChatClient",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "segments",
+                                "type": "QStringList"
+                            }
+                        ],
+                        "index": 0,
+                        "lineNumber": 42,
+                        "name": "replyReady",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "message",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 46,
+                        "name": "requestFailed",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "summary",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 48,
+                        "name": "storyReplayReady",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "message",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 49,
+                        "name": "storyReplayFailed",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "ChatClient.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "ChatMessageModel",
+                "enums": [
+                    {
+                        "isClass": false,
+                        "isFlag": false,
+                        "lineNumber": 29,
+                        "name": "Roles",
+                        "values": [
+                            "IdRole",
+                            "RoleRole",
+                            "ContentRole",
+                            "EmotionRole"
+                        ]
+                    }
+                ],
+                "final": true,
+                "lineNumber": 23,
+                "methods": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 47,
+                        "name": "clear",
+                        "returnType": "void"
+                    }
+                ],
+                "object": true,
+                "qualifiedClassName": "ChatMessageModel",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QAbstractListModel"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "ChatMessageModel.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "ChatSessionController",
+                "final": true,
+                "lineNumber": 14,
+                "methods": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "content",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 42,
+                        "name": "sendMessage",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 5,
+                        "lineNumber": 43,
+                        "name": "startStoryReplay",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 6,
+                        "lineNumber": 44,
+                        "name": "clearMessages",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "characterName",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 7,
+                        "lineNumber": 45,
+                        "name": "selectCharacter",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 8,
+                        "lineNumber": 46,
+                        "name": "checkConnection",
+                        "returnType": "void"
+                    }
+                ],
+                "object": true,
+                "properties": [
+                    {
+                        "constant": true,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 19,
+                        "name": "messages",
+                        "override": false,
+                        "read": "messages",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "ChatMessageModel*",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 20,
+                        "name": "busy",
+                        "notify": "busyChanged",
+                        "override": false,
+                        "read": "busy",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 21,
+                        "name": "statusText",
+                        "notify": "statusTextChanged",
+                        "override": false,
+                        "read": "statusText",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 3,
+                        "lineNumber": 22,
+                        "name": "activeEmotion",
+                        "notify": "activeCharacterChanged",
+                        "override": false,
+                        "read": "activeEmotion",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 4,
+                        "lineNumber": 23,
+                        "name": "activeCharacterImagePath",
+                        "notify": "activeCharacterChanged",
+                        "override": false,
+                        "read": "activeCharacterImagePath",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 5,
+                        "lineNumber": 24,
+                        "name": "connectionStatus",
+                        "notify": "connectionStatusChanged",
+                        "override": false,
+                        "read": "connectionStatus",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false
+                    }
+                ],
+                "qualifiedClassName": "ChatSessionController",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 51,
+                        "name": "busyChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 1,
+                        "lineNumber": 52,
+                        "name": "statusTextChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 2,
+                        "lineNumber": 53,
+                        "name": "activeCharacterChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 3,
+                        "lineNumber": 54,
+                        "name": "connectionStatusChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "ChatSessionController.h",
+        "outputRevision": 69
+    },
+    {
+        "classes": [
+            {
+                "className": "FrontendSettings",
+                "final": true,
+                "lineNumber": 11,
+                "methods": [
+                    {
+                        "access": "public",
+                        "index": 19,
+                        "lineNumber": 58,
+                        "name": "reset",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "index": 20,
+                        "lineNumber": 59,
+                        "name": "save",
+                        "returnType": "void"
+                    }
+                ],
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "lineNumber": 13,
+                        "name": "languageId",
+                        "notify": "settingsChanged",
+                        "override": false,
+                        "read": "languageId",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setLanguageId"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "lineNumber": 14,
+                        "name": "themeId",
+                        "notify": "settingsChanged",
+                        "override": false,
+                        "read": "themeId",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setThemeId"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "lineNumber": 15,
+                        "name": "characterName",
+                        "notify": "settingsChanged",
+                        "override": false,
+                        "read": "characterName",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setCharacterName"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 3,
+                        "lineNumber": 16,
+                        "name": "sessionId",
+                        "notify": "settingsChanged",
+                        "override": false,
+                        "read": "sessionId",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setSessionId"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 4,
+                        "lineNumber": 17,
+                        "name": "workspaceName",
+                        "notify": "settingsChanged",
+                        "override": false,
+                        "read": "workspaceName",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setWorkspaceName"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 5,
+                        "lineNumber": 18,
+                        "name": "operatorName",
+                        "notify": "settingsChanged",
+                        "override": false,
+                        "read": "operatorName",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setOperatorName"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 6,
+                        "lineNumber": 19,
+                        "name": "bootAnimationEnabled",
+                        "notify": "settingsChanged",
+                        "override": false,
+                        "read": "bootAnimationEnabled",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setBootAnimationEnabled"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 7,
+                        "lineNumber": 20,
+                        "name": "bootDurationMs",
+                        "notify": "settingsChanged",
+                        "override": false,
+                        "read": "bootDurationMs",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "int",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setBootDurationMs"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 8,
+                        "lineNumber": 21,
+                        "name": "responseDelayMs",
+                        "notify": "settingsChanged",
+                        "override": false,
+                        "read": "responseDelayMs",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "int",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setResponseDelayMs"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 9,
+                        "lineNumber": 22,
+                        "name": "moteCount",
+                        "notify": "settingsChanged",
+                        "override": false,
+                        "read": "moteCount",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "int",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setMoteCount"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 10,
+                        "lineNumber": 23,
+                        "name": "uiScalePercent",
+                        "notify": "settingsChanged",
+                        "override": false,
+                        "read": "uiScalePercent",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "int",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setUiScalePercent"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 11,
+                        "lineNumber": 24,
+                        "name": "backendBaseUrl",
+                        "notify": "settingsChanged",
+                        "override": false,
+                        "read": "backendBaseUrl",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setBackendBaseUrl"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 12,
+                        "lineNumber": 25,
+                        "name": "aiBaseUrl",
+                        "notify": "settingsChanged",
+                        "override": false,
+                        "read": "aiBaseUrl",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setAiBaseUrl"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 13,
+                        "lineNumber": 26,
+                        "name": "aiApiKey",
+                        "notify": "settingsChanged",
+                        "override": false,
+                        "read": "aiApiKey",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setAiApiKey"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 14,
+                        "lineNumber": 27,
+                        "name": "aiModelName",
+                        "notify": "settingsChanged",
+                        "override": false,
+                        "read": "aiModelName",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setAiModelName"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 15,
+                        "lineNumber": 28,
+                        "name": "embeddingBaseUrl",
+                        "notify": "settingsChanged",
+                        "override": false,
+                        "read": "embeddingBaseUrl",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setEmbeddingBaseUrl"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 16,
+                        "lineNumber": 29,
+                        "name": "embeddingApiKey",
+                        "notify": "settingsChanged",
+                        "override": false,
+                        "read": "embeddingApiKey",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setEmbeddingApiKey"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 17,
+                        "lineNumber": 30,
+                        "name": "embeddingModelName",
+                        "notify": "settingsChanged",
+                        "override": false,
+                        "read": "embeddingModelName",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "virtual": false,
+                        "write": "setEmbeddingModelName"
+                    }
+                ],
+                "qualifiedClassName": "FrontendSettings",
+                "signals": [
+                    {
+                        "access": "public",
+                        "index": 0,
+                        "lineNumber": 86,
+                        "name": "settingsChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "value",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 1,
+                        "lineNumber": 64,
+                        "name": "setLanguageId",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "value",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 2,
+                        "lineNumber": 65,
+                        "name": "setThemeId",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "value",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 3,
+                        "lineNumber": 66,
+                        "name": "setCharacterName",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "value",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 4,
+                        "lineNumber": 67,
+                        "name": "setSessionId",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "value",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 5,
+                        "lineNumber": 68,
+                        "name": "setWorkspaceName",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "value",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 6,
+                        "lineNumber": 69,
+                        "name": "setOperatorName",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "value",
+                                "type": "bool"
+                            }
+                        ],
+                        "index": 7,
+                        "lineNumber": 70,
+                        "name": "setBootAnimationEnabled",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "value",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 8,
+                        "lineNumber": 71,
+                        "name": "setBootDurationMs",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "value",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 9,
+                        "lineNumber": 72,
+                        "name": "setResponseDelayMs",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "value",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 10,
+                        "lineNumber": 73,
+                        "name": "setMoteCount",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "value",
+                                "type": "int"
+                            }
+                        ],
+                        "index": 11,
+                        "lineNumber": 74,
+                        "name": "setUiScalePercent",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "value",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 12,
+                        "lineNumber": 75,
+                        "name": "setBackendBaseUrl",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "value",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 13,
+                        "lineNumber": 76,
+                        "name": "setAiBaseUrl",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "value",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 14,
+                        "lineNumber": 77,
+                        "name": "setAiApiKey",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "value",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 15,
+                        "lineNumber": 78,
+                        "name": "setAiModelName",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "value",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 16,
+                        "lineNumber": 79,
+                        "name": "setEmbeddingBaseUrl",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "value",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 17,
+                        "lineNumber": 80,
+                        "name": "setEmbeddingApiKey",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "value",
+                                "type": "QString"
+                            }
+                        ],
+                        "index": 18,
+                        "lineNumber": 81,
+                        "name": "setEmbeddingModelName",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "FrontendSettings.h",
+        "outputRevision": 69
+    }
+]

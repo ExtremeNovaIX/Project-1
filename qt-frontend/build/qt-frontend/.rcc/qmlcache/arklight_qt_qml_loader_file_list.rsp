@@ -1,0 +1,7 @@
+--resource
+E:/Arklight/qt-frontend/build/qt-frontend/.qt/rcc/qmake_Arklight.qrc
+--resource
+E:/Arklight/qt-frontend/build/qt-frontend/.qt/rcc/arklight_qt_raw_qml_0.qrc
+--resource
+E:/Arklight/qt-frontend/build/qt-frontend/.qt/rcc/arklight_qt_raw_qml_0_extra_qmldirs.qrc
+/qt/qml/Arklight/qml/Main.qml

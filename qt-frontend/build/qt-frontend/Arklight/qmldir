@@ -1,0 +1,6 @@
+module Arklight
+typeinfo arklight_qt.qmltypes
+prefer :/qt/qml/Arklight/
+Main 1.0 qml/Main.qml
+depends QtQuick
+

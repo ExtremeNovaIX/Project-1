@@ -1,0 +1,121 @@
+{
+    "classes": [
+        {
+            "className": "CharacterCatalog",
+            "final": true,
+            "lineNumber": 11,
+            "methods": [
+                {
+                    "access": "public",
+                    "index": 1,
+                    "lineNumber": 26,
+                    "name": "reload",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 2,
+                    "isConst": true,
+                    "lineNumber": 27,
+                    "name": "openCharactersFolder",
+                    "returnType": "bool"
+                },
+                {
+                    "access": "public",
+                    "index": 3,
+                    "isConst": true,
+                    "lineNumber": 28,
+                    "name": "characterNames",
+                    "returnType": "QStringList"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "characterName",
+                            "type": "QString"
+                        }
+                    ],
+                    "index": 4,
+                    "isConst": true,
+                    "lineNumber": 29,
+                    "name": "defaultEmotion",
+                    "returnType": "QString"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "characterName",
+                            "type": "QString"
+                        },
+                        {
+                            "name": "emotion",
+                            "type": "QString"
+                        }
+                    ],
+                    "index": 5,
+                    "isConst": true,
+                    "lineNumber": 30,
+                    "name": "imageFor",
+                    "returnType": "QString"
+                }
+            ],
+            "object": true,
+            "properties": [
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 0,
+                    "lineNumber": 13,
+                    "name": "characters",
+                    "notify": "charactersChanged",
+                    "override": false,
+                    "read": "characters",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "QVariantList",
+                    "user": false,
+                    "virtual": false
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 1,
+                    "lineNumber": 14,
+                    "name": "charactersPath",
+                    "notify": "charactersChanged",
+                    "override": false,
+                    "read": "charactersPath",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "QString",
+                    "user": false,
+                    "virtual": false
+                }
+            ],
+            "qualifiedClassName": "CharacterCatalog",
+            "signals": [
+                {
+                    "access": "public",
+                    "index": 0,
+                    "lineNumber": 35,
+                    "name": "charactersChanged",
+                    "returnType": "void"
+                }
+            ],
+            "superClasses": [
+                {
+                    "access": "public",
+                    "name": "QObject"
+                }
+            ]
+        }
+    ],
+    "inputFile": "CharacterCatalog.h",
+    "outputRevision": 69
+}

@@ -1,0 +1,6 @@
+<RCC>
+  <qresource prefix="/qt/qml/Arklight/">
+    <file alias="qml/qmldir">E:/Arklight/qt-frontend/build/qt-frontend/Arklight/qml/qmldir</file>
+  </qresource>
+</RCC>
+

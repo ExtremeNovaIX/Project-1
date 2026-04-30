@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"E:/Arklight/qt-frontend/build/qt-frontend/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

@@ -1,0 +1,15 @@
+-rootPath
+E:/Arklight/qt-frontend
+-cmake-output
+-output-file
+E:/Arklight/qt-frontend/build/qt-frontend/.qt/qml_imports/arklight_qt_build.cmake
+-importPath
+E:/Arklight/qt-frontend/build/qt-frontend
+-importPath
+E:/Arklight/qt-frontend/build/qt-frontend/Arklight
+-importPath
+E:/QT/6.11.0/mingw_64/qml
+-qrcFiles
+E:/Arklight/qt-frontend/build/qt-frontend/.qt/rcc/qmake_Arklight.qrc
+E:/Arklight/qt-frontend/build/qt-frontend/.qt/rcc/arklight_qt_raw_qml_0.qrc
+E:/Arklight/qt-frontend/build/qt-frontend/.qt/rcc/arklight_qt_raw_qml_0_extra_qmldirs.qrc

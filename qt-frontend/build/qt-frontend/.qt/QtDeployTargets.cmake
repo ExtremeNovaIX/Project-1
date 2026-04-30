@@ -1,0 +1,3 @@
+set(__QT_DEPLOY_TARGET_arklight_qt_FILE E:/Arklight/qt-frontend/build/qt-frontend/arklight_qt.exe)
+set(__QT_DEPLOY_TARGET_arklight_qt_TYPE EXECUTABLE)
+set(__QT_DEPLOY_TARGET_arklight_qt_RUNTIME_DLLS E:/QT/6.11.0/mingw_64/bin/Qt6QuickControls2.dll;E:/QT/6.11.0/mingw_64/bin/Qt6QuickTemplates2.dll;E:/QT/6.11.0/mingw_64/bin/Qt6Quick.dll;E:/QT/6.11.0/mingw_64/bin/Qt6OpenGL.dll;E:/QT/6.11.0/mingw_64/bin/Qt6Gui.dll;E:/QT/6.11.0/mingw_64/bin/Qt6QmlMeta.dll;E:/QT/6.11.0/mingw_64/bin/Qt6QmlWorkerScript.dll;E:/QT/6.11.0/mingw_64/bin/Qt6QmlModels.dll;E:/QT/6.11.0/mingw_64/bin/Qt6Qml.dll;E:/QT/6.11.0/mingw_64/bin/Qt6Network.dll;E:/QT/6.11.0/mingw_64/bin/Qt6Core.dll)

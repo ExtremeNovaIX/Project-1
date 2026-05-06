@@ -1,0 +1,15 @@
+mcp:
+  servers-directory: ${MCP_SERVERS_DIR:../mcp-servers}
+  registry-file: ${MCP_REGISTRY_FILE:config/mcp-registry.json}
+  client:
+    tool-timeout-seconds: 120
+    max-connections: 4
+
+gamer:
+  default-game-name: ${GAMER_DEFAULT_GAME:}
+  default-session-id: ${GAMER_DEFAULT_SESSION:default}
+  client-name: ${GAMER_MCP_CLIENT_NAME:ArcLight-GameAgent}
+  client-version: ${GAMER_MCP_CLIENT_VERSION:1.0}
+  game-loop:
+    poll-interval-ms: 5000
+    max-immediate-replans: 5

@@ -78,6 +78,12 @@ public class AiConfig {
         return buildChatModel(config, aiServiceLoggingListener, 0.0, true);
     }
 
+    @Bean(name = "gamerChatModel")
+    public ChatModel gamerChatModel() {
+        AssistantProperties.ChatModelConfig config = props.activeChatModel();
+        return buildChatModel(config, aiServiceLoggingListener, 0.3);
+    }
+
     @Bean(name = "testChatModel")
     public ChatModel testChatModel() {
         AssistantProperties.ChatModelConfig chatModelConfig = props.getTestAi().getChatModel();

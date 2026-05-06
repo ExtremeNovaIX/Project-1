@@ -1,4 +1,8 @@
 spring:
+  config:
+    import:
+      - optional:classpath:application-mcp.yaml
+
   h2:
     console:
       enabled: true

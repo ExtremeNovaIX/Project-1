@@ -16,7 +16,7 @@ public class GameLoopProperties {
     /**
      * 慢轮询间隔（毫秒），检查是否轮到 AI 行动
      */
-    private long pollIntervalMs = 5000;
+    private long pollIntervalMs = 3000;
     /**
      * 单次慢轮询 tick 内最多允许的即时重规划次数，防止状态持续抖动导致死循环。
      */

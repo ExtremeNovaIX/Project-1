@@ -1,0 +1,31 @@
+package p1.config.mcp;
+
+import lombok.Data;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.stereotype.Component;
+
+/**
+ * gamer 工作记忆配置。
+ * <p>
+ * 这里不配置摘要字符上限；压缩质量由压缩提示词和压缩频率控制，避免把摘要变成机械截断。
+ */
+@Data
+@Component
+@ConfigurationProperties(prefix = "gamer.memory")
+public class GamerMemoryProperties {
+
+    /**
+     * 未压缩的近期决策保留数量。
+     */
+    private int recentDecisionLimit = 10;
+
+    /**
+     * 每累计多少次 gamer 决策后，把近期决策压缩进阶段摘要。
+     */
+    private int stageCompressDecisionInterval = 8;
+
+    /**
+     * 每累计多少个阶段摘要后，把阶段摘要压缩进全局 run 摘要。
+     */
+    private int runCompressStageInterval = 3;
+}

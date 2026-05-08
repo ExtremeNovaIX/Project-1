@@ -1,6 +1,5 @@
 package p1.component.gamer;
 
-import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
@@ -12,6 +11,7 @@ import p1.component.gamer.bridge.GameBridgeActionStatus;
 import p1.component.gamer.bridge.GameBridgeService;
 import p1.component.gamer.bridge.GameOperationQueueProcessor;
 import p1.component.gamer.bridge.GamerRPBridge;
+import p1.component.gamer.memory.TurnScopedGamerChatMemory;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -31,7 +31,6 @@ public class GamerAgentService {
     private final GameBridgeService bridgeService;
     private final GamerRPNotifyTool notifyTool;
     private final GamerRPBridge bridge;
-    private final ChatMemoryProvider chatMemoryProvider;
     private final ChatModel chatModel;
 
     /**
@@ -41,20 +40,17 @@ public class GamerAgentService {
      * @param bridgeService      游戏桥接服务
      * @param notifyTool         RP 通知工具
      * @param bridge             RP 事件桥
-     * @param chatMemoryProvider 聊天记忆提供器
      * @param chatModel          游戏智能体使用的模型
      */
     public GamerAgentService(GamerMCPClientFactory mcpClientFactory,
                              GameBridgeService bridgeService,
                              GamerRPNotifyTool notifyTool,
                              GamerRPBridge bridge,
-                             ChatMemoryProvider chatMemoryProvider,
                              @Qualifier("gamerChatModel") ChatModel chatModel) {
         this.mcpClientFactory = mcpClientFactory;
         this.bridgeService = bridgeService;
         this.notifyTool = notifyTool;
         this.bridge = bridge;
-        this.chatMemoryProvider = chatMemoryProvider;
         this.chatModel = chatModel;
     }
 
@@ -90,7 +86,8 @@ public class GamerAgentService {
 
         GamerAgent agent = AiServices.builder(GamerAgent.class)
                 .chatModel(chatModel)
-                .chatMemoryProvider(chatMemoryProvider)
+                // 只保留当前调用内的消息，避免完整游戏状态跨轮进入聊天记忆。
+                .chatMemoryProvider(TurnScopedGamerChatMemory::new)
                 .toolProvider(mcpTools)
                 .tools(notifyTool)
                 .build();

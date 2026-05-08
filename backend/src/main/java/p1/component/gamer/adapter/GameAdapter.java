@@ -8,6 +8,8 @@ import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProviderResult;
 import p1.config.mcp.MCPProperties;
 
+import java.util.ArrayDeque;
+import java.util.List;
 import java.util.stream.Collectors;
 
 /**
@@ -120,6 +122,22 @@ public interface GameAdapter {
      */
     default QueuedGameOperation prepareOperation(GameOperation operation, GameStateSnapshot plannedState) {
         return QueuedGameOperation.from(operation, plannedState);
+    }
+
+    /**
+     * 将一批操作全部入队。子类可覆写以跨操作模拟状态变化（如手牌减少），
+     * 确保每条操作的元数据（plannedCardName 等）基于前序操作执行后的预期状态。
+     *
+     * @param operations   agent 提交的原始操作列表
+     * @param plannedState agent 做计划时看到的状态
+     * @return 带有元数据的排队操作队列
+     */
+    default ArrayDeque<QueuedGameOperation> prepareBatch(List<GameOperation> operations, GameStateSnapshot plannedState) {
+        ArrayDeque<QueuedGameOperation> queue = new ArrayDeque<>();
+        for (GameOperation op : operations) {
+            queue.offerLast(prepareOperation(op, plannedState));
+        }
+        return queue;
     }
 
     /**

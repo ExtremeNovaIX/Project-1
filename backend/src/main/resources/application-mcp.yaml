@@ -11,5 +11,9 @@ gamer:
   client-name: ${GAMER_MCP_CLIENT_NAME:ArcLight-GameAgent}
   client-version: ${GAMER_MCP_CLIENT_VERSION:1.0}
   game-loop:
-    poll-interval-ms: 5000
+    poll-interval-ms: 3000
     max-immediate-replans: 5
+  memory:
+    recent-decision-limit: 10
+    stage-compress-decision-interval: 8
+    run-compress-stage-interval: 3

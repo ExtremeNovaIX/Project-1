@@ -13,6 +13,7 @@ import p1.component.gamer.adapter.GameAdapter;
 import p1.component.gamer.adapter.GameAdapterContext;
 import p1.component.gamer.adapter.GameAdapterRegistry;
 import p1.component.gamer.adapter.GameStateSnapshot;
+import p1.component.gamer.memory.GamerWorkingMemoryService;
 import p1.config.mcp.MCPProperties;
 
 /**
@@ -29,6 +30,7 @@ public class GameBridgeService {
     private final MCPProperties mcpProperties;
     private final GameAdapterRegistry adapterRegistry;
     private final GameOperationQueueProcessor queueProcessor;
+    private final GamerWorkingMemoryService workingMemoryService;
 
     /**
      * 构建暴露给 gamer agent 的桥接工具集合。
@@ -65,20 +67,26 @@ public class GameBridgeService {
         // 状态只由桥接层主动获取，并直接注入给 agent；agent 不需要也不应该调用状态工具。
         GameStateSnapshot state = adapter.fetchState(new GameAdapterContext(gameName, memoryId, tools, config));
         queueProcessor.rememberPlanningState(memoryId, state);
+        workingMemoryService.observeState(gameName, memoryId, state);
 
         // 上一轮队列中断原因会随最新状态一并注入，要求 agent 放弃旧计划重新决策。
         String notice = queueProcessor.consumeNotice(memoryId);
+        String workingMemory = workingMemoryService.renderMemory(gameName, memoryId);
         StringBuilder sb = new StringBuilder();
         sb.append("<bridge_rules>\n")
                 .append("- 系统已经注入最新游戏状态，不要调用任何状态查询工具。\n")
                 .append("- 游戏操作必须通过 `").append(GameBridgeToolProvider.ENQUEUE_TOOL_NAME).append("` 一次提交一个操作队列。\n")
                 .append("- operations 中的每一项使用下方列出的 MCP 工具名和参数；桥接层会逐条执行。\n")
                 .append("- 如果桥接层报告队列中断，立即基于最新状态重新决策，不要沿用旧队列。\n")
+                .append("- gamer_memory 只是历史决策摘要，不能覆盖 latest_game_state 中的当前事实。\n")
                 .append("</bridge_rules>\n\n");
         if (notice != null && !notice.isBlank()) {
             sb.append("<bridge_notice>\n").append(notice).append("\n</bridge_notice>\n\n");
         }
-        sb.append("<latest_game_state>\n")
+        sb.append("<gamer_memory>\n")
+                .append(workingMemory)
+                .append("\n</gamer_memory>\n\n")
+                .append("<latest_game_state>\n")
                 .append(adapter.renderStateForAgent(state))
                 .append("\n</latest_game_state>\n\n")
                 .append("<available_operations>\n")

@@ -14,6 +14,7 @@ import p1.component.gamer.adapter.GameBridgeException;
 import p1.component.gamer.adapter.GameOperation;
 import p1.component.gamer.adapter.GameStateSnapshot;
 import p1.component.gamer.adapter.QueuedGameOperation;
+import p1.component.gamer.memory.GamerWorkingMemoryService;
 import p1.config.mcp.MCPProperties;
 
 import java.util.ArrayDeque;
@@ -33,9 +34,19 @@ import java.util.concurrent.ConcurrentHashMap;
 public class GameOperationQueueProcessor {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final GamerWorkingMemoryService workingMemoryService;
     private final Map<String, GameStateSnapshot> planningStates = new ConcurrentHashMap<>();
     private final Map<String, String> notices = new ConcurrentHashMap<>();
     private final Map<String, GameBridgeActionStatus> lastStatuses = new ConcurrentHashMap<>();
+
+    /**
+     * 创建游戏操作队列处理器。
+     *
+     * @param workingMemoryService gamer 纯内存工作记忆服务
+     */
+    public GameOperationQueueProcessor(GamerWorkingMemoryService workingMemoryService) {
+        this.workingMemoryService = workingMemoryService;
+    }
 
     /**
      * 记录本轮 agent 决策时看到的状态。
@@ -95,16 +106,21 @@ public class GameOperationQueueProcessor {
                                   String rawArguments) {
         String key = memoryId == null || memoryId.isBlank() ? gameName : memoryId;
         GameAdapterContext context = new GameAdapterContext(gameName, key, rawTools, config);
+        GameBridgeActionStatus requestedStatus = GameBridgeActionStatus.CONTINUE;
+        String summary = "";
+        List<GameOperation> operations = List.of();
         try {
             // 解析虚拟工具参数，后续所有执行都基于这个批次的 operations。
             JsonNode root = objectMapper.readTree(rawArguments == null || rawArguments.isBlank() ? "{}" : rawArguments);
-            GameBridgeActionStatus requestedStatus = GameBridgeActionStatus.from(root.path("status").asText("CONTINUE"));
-            String summary = root.path("summary").asText("");
+            requestedStatus = GameBridgeActionStatus.from(root.path("status").asText("CONTINUE"));
+            summary = root.path("summary").asText("");
 
-            List<GameOperation> operations = parseOperations(root.path("operations"));
+            operations = parseOperations(root.path("operations"));
             if (operations.isEmpty()) {
+                String result = "未提交操作。" + summary;
                 lastStatuses.put(key, requestedStatus);
-                return formatStatus(requestedStatus, "未提交操作。" + summary);
+                recordMemorySafely(gameName, key, requestedStatus, summary, operations, result, null);
+                return formatStatus(requestedStatus, result);
             }
             log.info("[游戏桥接] 收到操作队列: game={}, memoryId={}, operations={}", gameName, key, operations);
 
@@ -114,26 +130,67 @@ public class GameOperationQueueProcessor {
                 plannedState = adapter.fetchState(context);
             }
             // 队列只在本次 enqueue_operations 调用内存在；中断后必须自然丢弃剩余操作。
-            ArrayDeque<QueuedGameOperation> queue = new ArrayDeque<>();
-            for (GameOperation operation : operations) {
-                queue.offerLast(adapter.prepareOperation(operation, plannedState));
-            }
+            ArrayDeque<QueuedGameOperation> queue = adapter.prepareBatch(operations, plannedState);
 
             // drainQueue 内部仍然逐条调用 MCP，任何修复失败或状态异常都会抛异常中断。
             GameStateSnapshot latestState = drainQueue(key, adapter, context, queue, plannedState);
             planningStates.put(key, latestState);
             lastStatuses.put(key, requestedStatus);
-            return formatStatus(requestedStatus, "已执行 " + operations.size() + " 条操作。 " + summary);
+            String result = "已执行 " + operations.size() + " 条操作。 " + summary;
+            recordMemorySafely(gameName, key, requestedStatus, summary, operations, result, null);
+            return formatStatus(requestedStatus, result);
         } catch (GameBridgeException e) {
-            log.warn("[游戏桥接] 操作队列中断: game={}, memoryId={}, executed={}, reason={}", gameName, key, e.getExecutedCount(), e.getMessage());
+            log.warn("[游戏操作队列中断] game={}, memoryId={}, executed={}, reason={}", gameName, key, e.getExecutedCount(), e.getMessage());
             lastStatuses.put(key, GameBridgeActionStatus.INTERRUPTED);
             notices.put(key, e.getMessage());
+            recordMemorySafely(
+                    gameName,
+                    key,
+                    GameBridgeActionStatus.INTERRUPTED,
+                    summary,
+                    operations,
+                    "队列中断，已执行 " + e.getExecutedCount() + " 条操作，剩余操作已丢弃。",
+                    e.getMessage());
             return "[CONTINUE] 操作队列已中断，剩余指令已丢弃。" + e.getMessage() + "\n请基于下一次注入的最新状态重新决策。";
         } catch (Exception e) {
             log.error("[游戏桥接] 操作队列处理失败: game={}, memoryId={}", gameName, key, e);
             lastStatuses.put(key, GameBridgeActionStatus.CONTINUE);
             notices.put(key, "桥接层处理失败: " + e.getMessage());
+            recordMemorySafely(
+                    gameName,
+                    key,
+                    GameBridgeActionStatus.CONTINUE,
+                    summary,
+                    operations,
+                    "桥接层处理失败，队列已丢弃。",
+                    e.getMessage());
             return "[CONTINUE] 桥接层处理操作队列失败，已丢弃队列。原因: " + e.getMessage() + "\n请基于下一次注入的最新状态重新决策。";
+        }
+    }
+
+    /**
+     * 安全记录 gamer 工作记忆，避免记忆压缩失败影响真实游戏操作结果。
+     *
+     * @param gameName        游戏名
+     * @param key             会话 key
+     * @param status          本次队列状态
+     * @param summary         agent 提交的决策摘要
+     * @param operations      agent 提交的操作队列
+     * @param result          桥接层执行结果
+     * @param interruptReason 队列中断原因；没有中断时为空
+     */
+    private void recordMemorySafely(String gameName,
+                                    String key,
+                                    GameBridgeActionStatus status,
+                                    String summary,
+                                    List<GameOperation> operations,
+                                    String result,
+                                    String interruptReason) {
+        try {
+            // 工作记忆是辅助上下文，失败时只记录日志，不改变桥接层返回给 agent 的结果。
+            workingMemoryService.recordQueueResult(gameName, key, status, summary, operations, result, interruptReason);
+        } catch (Exception e) {
+            log.warn("[游戏桥接] gamer 工作记忆记录失败: game={}, memoryId={}, reason={}", gameName, key, e.getMessage());
         }
     }
 
@@ -176,6 +233,23 @@ public class GameOperationQueueProcessor {
             } catch (Exception e) {
                 throw new GameBridgeException("MCP 工具执行失败: " + request.name() + "，原因: " + e.getMessage(), executed);
             }
+
+            // 多人模式下状态可能在我们取 state 和实际执行之间发生变化，
+            // 导致修好的索引又越界。遇到 out of range 时重新取状态修复一次。
+            if (isIndexOutOfRange(toolResult)) {
+                GameStateSnapshot freshState = adapter.fetchState(context);
+                ToolExecutionRequest retryRequest = adapter.repairBeforeExecute(operation, freshState);
+                ToolExecutor retryExecutor = context.tools().toolExecutorByName(retryRequest.name());
+                if (retryExecutor != null) {
+                    try {
+                        toolResult = retryExecutor.execute(retryRequest, key);
+                        request = retryRequest;
+                    } catch (Exception e) {
+                        throw new GameBridgeException("MCP 工具执行失败(重试): " + retryRequest.name() + "，原因: " + e.getMessage(), executed);
+                    }
+                }
+            }
+
             executed++;
 
             QueuedGameOperation executedOperation = operation.withRequest(request);
@@ -263,6 +337,17 @@ public class GameOperationQueueProcessor {
      * @param attempt     当前重读次数
      * @param maxAttempts 最大重读次数
      */
+    /**
+     * 检测 MCP 工具返回是否为索引越界错误。
+     */
+    private boolean isIndexOutOfRange(String toolResult) {
+        if (toolResult == null || toolResult.isBlank()) {
+            return false;
+        }
+        String lower = toolResult.toLowerCase();
+        return lower.contains("out of range") || lower.contains("索引超出范围");
+    }
+
     private void sleepBeforeStateRetry(long delayMs, String key, int attempt, int maxAttempts) {
         if (delayMs <= 0) {
             return;

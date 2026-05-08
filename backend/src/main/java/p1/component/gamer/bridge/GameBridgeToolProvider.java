@@ -88,7 +88,7 @@ public class GameBridgeToolProvider implements ToolProvider {
                 .description("提交一批游戏操作。桥接层会逐条执行，每条执行后都会刷新状态并调用适配器监视。")
                 .addEnumProperty("status", List.of("CONTINUE", "WAIT", "GAME_OVER"),
                         "本批操作后的预期状态。没有可执行操作时填 WAIT。")
-                .addStringProperty("summary", "本批操作的策略说明")
+                .addStringProperty("summary", "本批操作的决策说明，必须清楚写明局势判断、行动目标、为什么选择这些操作，以及主要风险或停止条件")
                 .addProperty("operations", JsonArraySchema.builder()
                         .description("按顺序执行的操作队列，底层仍然一次执行一条 MCP 指令")
                         .items(operationSchema)

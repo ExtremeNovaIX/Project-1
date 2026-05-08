@@ -24,6 +24,7 @@ import p1.component.agent.memory.ChatMemoryAppender;
 import p1.component.agent.memory.FactEvaluatorAiService;
 import p1.component.agent.memory.FactExtractionAiService;
 import p1.component.agent.memory.MemoryAsyncCompressor;
+import p1.component.gamer.memory.GamerMemoryCompressorAiService;
 import p1.benchmark.halumem.HaluMemMemoryJudgeAiService;
 import p1.benchmark.halumem.HaluMemQaAnswerAiService;
 import p1.benchmark.halumem.HaluMemQaJudgeAiService;
@@ -127,6 +128,13 @@ public class AiConfig {
     @Bean
     public FactEvaluatorAiService factScoringAiService(@Qualifier("backendChatModel") ChatModel backendChatModel) {
         return AiServices.builder(FactEvaluatorAiService.class)
+                .chatModel(backendChatModel)
+                .build();
+    }
+
+    @Bean
+    public GamerMemoryCompressorAiService gamerMemoryCompressorAiService(@Qualifier("backendChatModel") ChatModel backendChatModel) {
+        return AiServices.builder(GamerMemoryCompressorAiService.class)
                 .chatModel(backendChatModel)
                 .build();
     }

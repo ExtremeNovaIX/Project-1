@@ -16,6 +16,9 @@ import p1.component.gamer.adapter.GameAdapterContext;
 import p1.component.gamer.adapter.GameStateSnapshot;
 import p1.component.gamer.adapter.STS2Adapter;
 import p1.component.gamer.adapter.SchemaNormalizingMcpTransport;
+import p1.component.gamer.memory.GamerMemoryCompressorAiService;
+import p1.component.gamer.memory.GamerWorkingMemoryService;
+import p1.config.mcp.GamerMemoryProperties;
 import p1.config.mcp.MCPProperties;
 
 import java.time.Duration;
@@ -33,12 +36,33 @@ class GameBridgeTimingTest {
             "..\\mcp-servers\\STS2MCP\\mcp";
 
     private static final STS2Adapter adapter = new STS2Adapter();
-    private static final GameOperationQueueProcessor processor = new GameOperationQueueProcessor();
+    private static final GameOperationQueueProcessor processor = new GameOperationQueueProcessor(testWorkingMemoryService());
 
     private static ToolProviderResult tools;
     private static ToolProvider mcpToolProvider;
     private static McpClient mcpClient;
     private static MCPProperties.GameMCPConfig config;
+
+    /**
+     * 构建计时测试专用的轻量工作记忆服务。
+     *
+     * @return 不调用真实模型的工作记忆服务
+     */
+    private static GamerWorkingMemoryService testWorkingMemoryService() {
+        // 计时测试关注 MCP 真实路径耗时，压缩器使用固定返回，避免引入额外模型调用。
+        GamerMemoryCompressorAiService compressor = new GamerMemoryCompressorAiService() {
+            @Override
+            public String compressStage(String previousSummary, String trigger, String decisions) {
+                return previousSummary + "\n" + trigger + "\n" + decisions;
+            }
+
+            @Override
+            public String compressRun(String previousRunSummary, String stageSummary) {
+                return previousRunSummary + "\n" + stageSummary;
+            }
+        };
+        return new GamerWorkingMemoryService(new GamerMemoryProperties(), compressor);
+    }
 
     @BeforeAll
     static void setUpMCP() throws Exception {

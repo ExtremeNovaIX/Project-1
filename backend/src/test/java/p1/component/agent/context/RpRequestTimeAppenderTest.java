@@ -3,6 +3,7 @@ package p1.component.agent.context;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import org.junit.jupiter.api.Test;
+import p1.component.agent.rp.context.RpRequestTimeAppender;
 import p1.model.ChatLogEntity;
 import p1.service.ChatLogRepository;
 import p1.utils.ChatMessageUtil;

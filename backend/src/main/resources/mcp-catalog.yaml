@@ -11,7 +11,7 @@ mcp:
       command: "uv"
       args: ["run", "--directory", "{{installPath}}", "python", "server.py"]
       connect-timeout-seconds: 30
-      gameplay-guidelines: |
+      gameplay-guidelines:
         - 战斗中仔细评估手牌、能量、防御需求和敌人意图。
         - 地图选择时权衡火堆、商店、精英和普通战斗的风险收益。
         - 优先移除低价值卡牌，保持牌组精简。

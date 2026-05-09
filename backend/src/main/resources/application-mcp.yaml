@@ -16,4 +16,4 @@ gamer:
   memory:
     recent-decision-limit: 10
     stage-compress-decision-interval: 8
-    run-compress-stage-interval: 3
+    run-compress-stage-interval: 5

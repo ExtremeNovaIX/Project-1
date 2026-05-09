@@ -4,7 +4,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import org.junit.jupiter.api.Test;
-import p1.component.agent.context.SummaryCacheManager;
+import p1.component.agent.rp.context.SummaryCacheManager;
 import p1.component.agent.memory.model.ExtractedMemoryEvent;
 import p1.component.agent.memory.model.FactExtractionPipelineResult;
 

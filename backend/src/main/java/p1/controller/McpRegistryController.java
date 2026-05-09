@@ -4,13 +4,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import p1.component.gamer.GamerMCPClientFactory;
+import p1.component.agent.gamer.GamerMCPClientFactory;
 import p1.config.mcp.MCPProperties;
 import p1.config.mcp.McpServerRegistry;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @RestController
 @CrossOrigin

@@ -16,20 +16,15 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.util.StringUtils;
-import p1.component.agent.aiservice.TestAiService;
-import p1.component.agent.context.RpRequestTimeAppender;
-import p1.component.agent.core.RpAgent;
-import p1.component.agent.memory.ArchivableChatMemory;
-import p1.component.agent.memory.ChatMemoryAppender;
-import p1.component.agent.memory.FactEvaluatorAiService;
-import p1.component.agent.memory.FactExtractionAiService;
-import p1.component.agent.memory.MemoryAsyncCompressor;
-import p1.component.gamer.memory.GamerMemoryCompressorAiService;
 import p1.benchmark.halumem.HaluMemMemoryJudgeAiService;
 import p1.benchmark.halumem.HaluMemQaAnswerAiService;
 import p1.benchmark.halumem.HaluMemQaJudgeAiService;
+import p1.component.agent.gamer.memory.GamerMemoryCompressorAiService;
+import p1.component.agent.memory.*;
+import p1.component.agent.rp.CallSolverTool;
+import p1.component.agent.rp.context.RpRequestTimeAppender;
+import p1.component.agent.rp.core.RpAgent;
 import p1.component.agent.task.checker.TaskCheckerAiService;
-import p1.component.agent.tools.CallSolverTool;
 import p1.component.log.AiServiceLoggingListener;
 import p1.component.log.AssistantLoggingListener;
 import p1.config.prop.AssistantProperties;
@@ -85,12 +80,6 @@ public class AiConfig {
         return buildChatModel(config, aiServiceLoggingListener, 0.3);
     }
 
-    @Bean(name = "testChatModel")
-    public ChatModel testChatModel() {
-        AssistantProperties.ChatModelConfig chatModelConfig = props.getTestAi().getChatModel();
-        return buildChatModel(chatModelConfig, null, 1.0);
-    }
-
     @Bean
     public RpAgent rpAgent(@Qualifier("rpChatModel") ChatModel chatModel,
                            ChatMemoryProvider chatMemoryProvider,
@@ -101,13 +90,6 @@ public class AiConfig {
                 .chatMemoryProvider(chatMemoryProvider)
                 .chatRequestTransformer(rpRequestTimeAppender::augment)
                 .tools(callSolverTool)
-                .build();
-    }
-
-    @Bean
-    public TestAiService testAssistant(@Qualifier("testChatModel") ChatModel chatModel) {
-        return AiServices.builder(TestAiService.class)
-                .chatModel(chatModel)
                 .build();
     }
 

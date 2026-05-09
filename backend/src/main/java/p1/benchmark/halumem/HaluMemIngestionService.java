@@ -6,7 +6,7 @@ import dev.langchain4j.data.message.UserMessage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
-import p1.component.agent.context.SummaryCacheManager;
+import p1.component.agent.rp.context.SummaryCacheManager;
 import p1.component.agent.memory.MemoryCompressionPipeline;
 import p1.component.agent.memory.MemoryWriteService;
 import p1.component.agent.memory.model.FactExtractionPipelineResult;

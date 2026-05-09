@@ -10,6 +10,7 @@ import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import org.junit.jupiter.api.Test;
+import p1.component.agent.gamer.memory.TurnScopedGamerChatMemory;
 
 import java.util.concurrent.atomic.AtomicReference;
 

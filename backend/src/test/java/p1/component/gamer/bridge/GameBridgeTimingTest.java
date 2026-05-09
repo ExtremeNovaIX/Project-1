@@ -1,7 +1,6 @@
 package p1.component.gamer.bridge;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.mcp.McpToolProvider;
 import dev.langchain4j.mcp.client.DefaultMcpClient;
 import dev.langchain4j.mcp.client.McpClient;
@@ -12,12 +11,13 @@ import dev.langchain4j.service.tool.ToolProviderRequest;
 import dev.langchain4j.service.tool.ToolProviderResult;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import p1.component.gamer.adapter.GameAdapterContext;
-import p1.component.gamer.adapter.GameStateSnapshot;
-import p1.component.gamer.adapter.STS2Adapter;
-import p1.component.gamer.adapter.SchemaNormalizingMcpTransport;
-import p1.component.gamer.memory.GamerMemoryCompressorAiService;
-import p1.component.gamer.memory.GamerWorkingMemoryService;
+import p1.component.agent.gamer.adapter.GameAdapterContext;
+import p1.component.agent.gamer.adapter.GameStateSnapshot;
+import p1.component.agent.gamer.adapter.STS2Adapter;
+import p1.component.agent.gamer.adapter.SchemaNormalizingMcpTransport;
+import p1.component.agent.gamer.bridge.GameOperationQueueProcessor;
+import p1.component.agent.gamer.memory.GamerMemoryCompressorAiService;
+import p1.component.agent.gamer.memory.GamerWorkingMemoryService;
 import p1.config.mcp.GamerMemoryProperties;
 import p1.config.mcp.MCPProperties;
 

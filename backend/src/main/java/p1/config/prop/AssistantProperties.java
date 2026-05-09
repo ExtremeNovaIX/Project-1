@@ -15,8 +15,6 @@ public class AssistantProperties {
     private MdRepositoryConfig mdRepository;
     private ChatMemoryConfig chatMemory;
     private EventTreeConfig eventTree = new EventTreeConfig();
-    private TestAiConfig testAi = new TestAiConfig();
-    private TestChatConfig testChat = new TestChatConfig();
 
     public ChatModelConfig activeChatModel() {
         return activeProvider().getChatModel();
@@ -102,15 +100,5 @@ public class AssistantProperties {
         private double recentWindowTimeDecayCoefficient = 0.5;
         // 最终连接边的最低得分阈值，低于这个值的边会被拦截。
         private double recentWindowFinalThreshold = 0.7;
-    }
-
-    @Data
-    public static class TestChatConfig {
-        private String selfSummaryPath = "data/test-chat";
-    }
-
-    @Data
-    public static class TestAiConfig {
-        private ChatModelConfig chatModel = new ChatModelConfig();
     }
 }

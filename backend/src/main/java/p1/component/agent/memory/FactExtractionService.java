@@ -9,7 +9,7 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
-import p1.component.agent.context.SummaryCacheManager;
+import p1.component.agent.rp.context.SummaryCacheManager;
 import p1.component.agent.memory.model.ExtractedMemoryEvent;
 import p1.component.agent.memory.model.FactExtractionPipelineResult;
 import p1.config.prop.AssistantProperties;

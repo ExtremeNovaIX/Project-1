@@ -1,8 +1,7 @@
 package p1.benchmark.halumem;
 
-import dev.langchain4j.data.message.ChatMessage;
 import org.junit.jupiter.api.Test;
-import p1.component.agent.context.SummaryCacheManager;
+import p1.component.agent.rp.context.SummaryCacheManager;
 import p1.component.agent.memory.MemoryCompressionPipeline;
 import p1.component.agent.memory.MemoryWriteService;
 import p1.component.agent.memory.model.ExtractedMemoryEvent;

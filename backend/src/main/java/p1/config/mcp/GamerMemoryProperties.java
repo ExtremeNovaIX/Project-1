@@ -6,8 +6,6 @@ import org.springframework.stereotype.Component;
 
 /**
  * gamer 工作记忆配置。
- * <p>
- * 这里不配置摘要字符上限；压缩质量由压缩提示词和压缩频率控制，避免把摘要变成机械截断。
  */
 @Data
 @Component
@@ -27,5 +25,5 @@ public class GamerMemoryProperties {
     /**
      * 每累计多少个阶段摘要后，把阶段摘要压缩进全局 run 摘要。
      */
-    private int runCompressStageInterval = 3;
+    private int runCompressStageInterval = 5;
 }

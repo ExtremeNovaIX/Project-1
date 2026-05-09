@@ -4,10 +4,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import p1.component.gamer.GamerAgentService;
-import p1.component.gamer.GamerRequestResolver;
-import p1.component.gamer.loop.ActiveGameSession;
-import p1.component.gamer.loop.GamerGameLoopService;
+import p1.component.agent.gamer.GamerAgentService;
+import p1.component.agent.gamer.GamerRequestResolver;
+import p1.component.agent.gamer.loop.ActiveGameSession;
+import p1.component.agent.gamer.loop.GamerGameLoopService;
 
 import java.util.Map;
 

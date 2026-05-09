@@ -1,7 +1,9 @@
 package p1.component.gamer;
 
 import org.junit.jupiter.api.Test;
-import p1.component.gamer.bridge.GamerRPBridge;
+import p1.component.agent.gamer.GameSessionKey;
+import p1.component.agent.gamer.GamerRequestResolver;
+import p1.component.agent.gamer.bridge.GamerRPBridge;
 import p1.config.mcp.GamerProperties;
 import p1.config.mcp.MCPProperties;
 

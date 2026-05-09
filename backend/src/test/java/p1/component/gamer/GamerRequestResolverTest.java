@@ -1,9 +1,7 @@
 package p1.component.gamer;
 
 import org.junit.jupiter.api.Test;
-import p1.component.agent.gamer.GameSessionKey;
 import p1.component.agent.gamer.GamerRequestResolver;
-import p1.component.agent.gamer.bridge.GamerRPBridge;
 import p1.config.mcp.GamerProperties;
 import p1.config.mcp.MCPProperties;
 
@@ -43,21 +41,6 @@ class GamerRequestResolverTest {
         IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
                 () -> resolver.resolveGameName(null));
         assertTrue(error.getMessage().contains("多个已启用"));
-    }
-
-    @Test
-    void shouldKeepEventsIsolatedByGameAndSession() {
-        GamerRPBridge bridge = new GamerRPBridge();
-        String sessionId = "session-1";
-        String gameAKey = GameSessionKey.of("game-a", sessionId);
-        String gameBKey = GameSessionKey.of("game-b", sessionId);
-
-        bridge.enqueueGameEvent(gameAKey, "event-a");
-        bridge.enqueueGameEvent(gameBKey, "event-b");
-
-        assertEquals("- event-a\n", bridge.drainEventsForRP(gameAKey));
-        assertNull(bridge.drainEventsForRP(gameAKey));
-        assertEquals("- event-b\n", bridge.drainEventsForRP(gameBKey));
     }
 
     private GamerRequestResolver resolverWithGames(String... gameNames) {

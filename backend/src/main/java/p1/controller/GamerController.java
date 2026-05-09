@@ -16,7 +16,6 @@ import java.util.Map;
  * <p>
  * 游戏指令：
  * POST /api/gamer/play   — 向 gamer agent 发送指令
- * GET  /api/gamer/events  — 提取待处理的游戏事件供 RP 叙述
  * <p>
  * 游戏循环控制：
  * POST /api/gamer/loop/start  — 启动自动游戏循环
@@ -51,41 +50,11 @@ public class GamerController {
         log.info("[游戏控制器] 收到游戏指令: game={}, session={}, message={}", gameName, sessionId, message);
 
         String response = gamerAgentService.play(gameName, sessionId, message);
-        boolean hasEvents = gamerAgentService.hasPendingEvents(gameName, sessionId);
 
         return ResponseEntity.ok(Map.of(
                 "gameName", gameName,
                 "sessionId", sessionId,
-                "response", response,
-                "hasPendingEvents", hasEvents
-        ));
-    }
-
-    @GetMapping("/events")
-    public ResponseEntity<?> drainEvents(
-            @RequestParam(required = false) String gameName,
-            @RequestParam(required = false) String sessionId) {
-        GameTarget target;
-        try {
-            target = resolveTarget(gameName, sessionId);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
-
-        String events = gamerAgentService.drainGameEvents(target.gameName(), target.sessionId());
-        if (events == null) {
-            return ResponseEntity.ok(Map.of(
-                    "gameName", target.gameName(),
-                    "sessionId", target.sessionId(),
-                    "events", "",
-                    "hasEvents", false
-            ));
-        }
-        return ResponseEntity.ok(Map.of(
-                "gameName", target.gameName(),
-                "sessionId", target.sessionId(),
-                "events", events,
-                "hasEvents", true
+                "response", response
         ));
     }
 

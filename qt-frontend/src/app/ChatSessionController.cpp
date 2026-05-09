@@ -125,13 +125,7 @@ void ChatSessionController::sendMessage(const QString &content) {
         trimmed,
         m_settings->sessionId(),
         m_settings->characterName(),
-        true,
-        m_settings->aiBaseUrl(),
-        m_settings->aiApiKey(),
-        m_settings->aiModelName(),
-        m_settings->embeddingBaseUrl(),
-        m_settings->embeddingApiKey(),
-        m_settings->embeddingModelName());
+        true);
 }
 
 void ChatSessionController::startStoryReplay() {
@@ -147,13 +141,7 @@ void ChatSessionController::startStoryReplay() {
         m_settings->backendBaseUrl(),
         m_settings->sessionId().trimmed().isEmpty() ? QStringLiteral("story-replay") : m_settings->sessionId(),
         m_settings->characterName(),
-        300000,
-        m_settings->aiBaseUrl(),
-        m_settings->aiApiKey(),
-        m_settings->aiModelName(),
-        m_settings->embeddingBaseUrl(),
-        m_settings->embeddingApiKey(),
-        m_settings->embeddingModelName());
+        300000);
 }
 
 void ChatSessionController::clearMessages() {

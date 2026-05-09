@@ -25,10 +25,11 @@ import java.util.stream.Stream;
  * MCP 服务器注册表，管理所有 MCP 服务器的发现与注册。
  * <p>
  * 启动时按优先级合并四个来源：
- * 1. mcp-catalog.yaml         - 预设目录模板 (classpath, 参考用)
- * 2. mcp-servers/ 目录扫描     - 自动发现 * /manifest.yaml (无需配置)
- * 3. application-mcp.yaml     - 用户显式配置或 installPath 引用目录模板
- * 4. config/mcp-registry.json - REST API 持久化的运行时注册条目 (最高优先级)
+ * 1. config/mcp-catalog.yaml  - 外部预设目录模板
+ * 2. mcp-catalog.yaml         - 预设目录模板 (classpath, 默认值)
+ * 3. mcp-servers/ 目录扫描     - 自动发现 * /manifest.yaml (无需配置)
+ * 4. application-mcp.yaml     - 用户显式配置或 installPath 引用目录模板
+ * 5. config/mcp-registry.json - REST API 持久化的运行时注册条目 (最终覆盖)
  * <p>
  * 所有启用的条目最终写入 MCPProperties.games, 供 GamerMCPClientFactory 使用.
  */
@@ -39,6 +40,9 @@ public class McpServerRegistry {
 
     private static final String DEFAULT_ADAPTER = "default";
     private static final String DEFAULT_STATE_TOOL_NAME = "get_state";
+    private static final String CONFIG_DIR_PROPERTY = "arclight.config.dir";
+    private static final String DEFAULT_CONFIG_DIR = "../config";
+    private static final String CATALOG_FILE_NAME = "mcp-catalog.yaml";
 
     private final MCPProperties properties;
     private final ObjectMapper objectMapper = new ObjectMapper()
@@ -397,8 +401,9 @@ public class McpServerRegistry {
 
     @SuppressWarnings("unchecked")
     private void loadCatalogFromClasspath() {
+        loadCatalogFromExternalConfig();
         try {
-            ClassPathResource resource = new ClassPathResource("mcp-catalog.yaml");
+            ClassPathResource resource = new ClassPathResource(CATALOG_FILE_NAME);
             if (!resource.exists()) {
                 log.info("[MCP] 未找到 mcp-catalog.yaml，跳过目录加载");
                 return;
@@ -417,12 +422,47 @@ public class McpServerRegistry {
                     String name = entry.getKey();
                     Map<String, Object> fields = (Map<String, Object>) entry.getValue();
                     MCPProperties.GameMCPConfig config = mapToConfig(fields);
-                    properties.getCatalog().put(name, config);
+                    // 外部 config/mcp-catalog.yaml 优先，classpath 只补齐缺失模板。
+                    properties.getCatalog().putIfAbsent(name, config);
                 }
                 log.info("[MCP] 加载目录: {} 个条目", properties.getCatalog().size());
             }
         } catch (Exception e) {
             log.error("[MCP] 加载 mcp-catalog.yaml 失败: {}", e.toString());
+        }
+    }
+
+    /**
+     * 优先加载外部 config 目录下的 mcp-catalog.yaml。
+     * <p>
+     * Spring Boot 不会按常规 application 规则加载 mcp-catalog.yaml，因此这里由 MCP 注册表显式读取。
+     */
+    @SuppressWarnings("unchecked")
+    private void loadCatalogFromExternalConfig() {
+        Path catalogFile = resolvePath(System.getProperty(CONFIG_DIR_PROPERTY, DEFAULT_CONFIG_DIR)).resolve(CATALOG_FILE_NAME);
+        if (!Files.isRegularFile(catalogFile)) {
+            return;
+        }
+
+        try (InputStream in = Files.newInputStream(catalogFile)) {
+            Yaml yaml = new Yaml();
+            Map<String, Object> root = yaml.load(in);
+            if (root == null) return;
+
+            Map<String, Object> mcpNode = (Map<String, Object>) root.get("mcp");
+            if (mcpNode == null) return;
+            Map<String, Object> catalogNode = (Map<String, Object>) mcpNode.get("catalog");
+            if (catalogNode == null) return;
+
+            for (Map.Entry<String, Object> entry : catalogNode.entrySet()) {
+                String name = entry.getKey();
+                Map<String, Object> fields = (Map<String, Object>) entry.getValue();
+                MCPProperties.GameMCPConfig config = mapToConfig(fields);
+                properties.getCatalog().put(name, config);
+            }
+            log.info("[MCP] 加载外部目录: file={}, entries={}", catalogFile, catalogNode.size());
+        } catch (Exception e) {
+            log.error("[MCP] 加载外部 mcp-catalog.yaml 失败: {}", e.toString());
         }
     }
 

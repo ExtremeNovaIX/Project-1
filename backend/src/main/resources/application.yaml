@@ -2,6 +2,7 @@ spring:
   config:
     import:
       - optional:classpath:application-mcp.yaml
+      - optional:${arclight.config.uri}application-mcp.yaml
 
   h2:
     console:
@@ -127,3 +128,29 @@ logging:
   level:
     org.hibernate.SQL: WARN
     org.hibernate.orm.jdbc.bind: WARN
+
+frontend:
+  settings:
+    backend-base-url: http://localhost:8080
+    character-name: ""
+    workspace-name: ArkLight Pioneer
+    operator-name: Local
+  web:
+    settings:
+      theme-id: arklight
+      session-id: ""
+      boot-animation-enabled: true
+      boot-duration-ms: 3500
+      response-delay-ms: 1000
+      short-mode-enabled: true
+      mote-count: 42
+  qt:
+    settings:
+      language-id: en
+      theme-id: system
+      session-id: qt-session
+      boot-animation-enabled: true
+      boot-duration-ms: 1200
+      response-delay-ms: 800
+      mote-count: 28
+      ui-scale-percent: 100

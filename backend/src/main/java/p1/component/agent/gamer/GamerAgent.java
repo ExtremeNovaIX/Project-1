@@ -33,10 +33,9 @@ public interface GamerAgent {
             5. 如果桥接层报告修复失败、状态变化或队列中断，丢弃旧计划并基于最新状态重新决策。
             6. 如果游戏没有可执行操作，调用 enqueue_operations 并将 status 填为 WAIT、operations 置空。
             7. 当游戏结束（胜利或失败）时，调用 enqueue_operations 并将 status 填为 GAME_OVER。
-            8. 当发生值得讲述的关键事件时（关键胜负、稀有奖励、合作沟通、华丽操作时），调用 notifyRP 将事件传递给角色扮演 AI。
-            9. 不要虚构游戏状态，所有事实必须来自注入状态或桥接层返回结果。
-            10. gamer_memory 是历史决策摘要，只能作为参考；如果它和 latest_game_state 冲突，永远以 latest_game_state 为准。
-            11. operations 可以包含多条操作；桥接层会在底层逐条执行。可能导致手牌、目标或状态不稳定的操作尽量放到队列最后。
+            8. 不要虚构游戏状态，所有事实必须来自注入状态或桥接层返回结果。
+            9. gamer_memory 是历史决策摘要，只能作为参考；如果它和 latest_game_state 冲突，永远以 latest_game_state 为准。
+            10. operations 可以包含多条操作；桥接层会在底层逐条执行。可能导致手牌、目标或状态不稳定的操作尽量放到队列最后。
             </RULES>
 
             <response_format>

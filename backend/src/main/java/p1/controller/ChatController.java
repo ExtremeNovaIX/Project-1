@@ -35,7 +35,7 @@ public class ChatController {
         MDC.put("sessionId", sessionId);
         MDC.put("chatRound", String.valueOf(currentRound));
         try {
-            String rawReply = chatService.sendChatToRpAgent(request);
+            String rawReply = chatService.sendMsgToRpAgent(request);
             rawReply = rawReply == null ? "" : rawReply;
             List<String> replyList;
             if (request.isShortMode()) {

@@ -20,16 +20,10 @@ class ChatClient final : public QObject {
     // thread.
     void sendMessage(const QString &baseUrl, const QString &message,
                      const QString &sessionId, const QString &characterName,
-                     bool shortMode, const QString &aiBaseUrl,
-                     const QString &aiApiKey, const QString &aiModelName,
-                     const QString &embeddingBaseUrl, const QString &embeddingApiKey,
-                     const QString &embeddingModelName);
+                     bool shortMode);
 
     void startStoryReplay(const QString &baseUrl, const QString &sessionId,
-                          const QString &characterName, int targetLength,
-                          const QString &aiBaseUrl, const QString &aiApiKey,
-                          const QString &aiModelName, const QString &embeddingBaseUrl,
-                          const QString &embeddingApiKey, const QString &embeddingModelName);
+                          const QString &characterName, int targetLength);
 
   signals:
     // 后端正常返回并解析出至少一段可显示文本时触发。

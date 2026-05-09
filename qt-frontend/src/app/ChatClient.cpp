@@ -86,13 +86,7 @@ void ChatClient::sendMessage(const QString &baseUrl,
                              const QString &message,
                              const QString &sessionId,
                              const QString &characterName,
-                             bool shortMode,
-                             const QString &aiBaseUrl,
-                             const QString &aiApiKey,
-                             const QString &aiModelName,
-                             const QString &embeddingBaseUrl,
-                             const QString &embeddingApiKey,
-                             const QString &embeddingModelName) {
+                             bool shortMode) {
     // 规范化 baseUrl，方便之后拼接固定 API 路径。
     // Normalize baseUrl before appending the fixed API path.
     QString normalizedBaseUrl = baseUrl.trimmed();
@@ -125,12 +119,6 @@ void ChatClient::sendMessage(const QString &baseUrl,
     payload.insert(QStringLiteral("sessionId"), sessionId);
     payload.insert(QStringLiteral("characterName"), characterName);
     payload.insert(QStringLiteral("shortMode"), shortMode);
-    payload.insert(QStringLiteral("aiBaseUrl"), aiBaseUrl.trimmed());
-    payload.insert(QStringLiteral("aiApiKey"), aiApiKey.trimmed());
-    payload.insert(QStringLiteral("aiModelName"), aiModelName.trimmed());
-    payload.insert(QStringLiteral("embeddingBaseUrl"), embeddingBaseUrl.trimmed());
-    payload.insert(QStringLiteral("embeddingApiKey"), embeddingApiKey.trimmed());
-    payload.insert(QStringLiteral("embeddingModelName"), embeddingModelName.trimmed());
 
     // post() 立即返回 QNetworkReply；真正完成时会发 finished 信号。
     // post() returns QNetworkReply immediately; finished is emitted when the request completes.
@@ -143,13 +131,7 @@ void ChatClient::sendMessage(const QString &baseUrl,
 void ChatClient::startStoryReplay(const QString &baseUrl,
                                   const QString &sessionId,
                                   const QString &characterName,
-                                  int targetLength,
-                                  const QString &aiBaseUrl,
-                                  const QString &aiApiKey,
-                                  const QString &aiModelName,
-                                  const QString &embeddingBaseUrl,
-                                  const QString &embeddingApiKey,
-                                  const QString &embeddingModelName) {
+                                  int targetLength) {
     QString normalizedBaseUrl = baseUrl.trimmed();
     while (normalizedBaseUrl.endsWith('/')) {
         normalizedBaseUrl.chop(1);
@@ -173,12 +155,6 @@ void ChatClient::startStoryReplay(const QString &baseUrl,
     payload.insert(QStringLiteral("sessionId"), sessionId);
     payload.insert(QStringLiteral("characterName"), characterName);
     payload.insert(QStringLiteral("targetLength"), targetLength);
-    payload.insert(QStringLiteral("aiBaseUrl"), aiBaseUrl.trimmed());
-    payload.insert(QStringLiteral("aiApiKey"), aiApiKey.trimmed());
-    payload.insert(QStringLiteral("aiModelName"), aiModelName.trimmed());
-    payload.insert(QStringLiteral("embeddingBaseUrl"), embeddingBaseUrl.trimmed());
-    payload.insert(QStringLiteral("embeddingApiKey"), embeddingApiKey.trimmed());
-    payload.insert(QStringLiteral("embeddingModelName"), embeddingModelName.trimmed());
 
     QNetworkReply *reply = m_network->post(request, QJsonDocument(payload).toJson(QJsonDocument::Compact));
     connect(reply, &QNetworkReply::finished, this, [this, reply]() {

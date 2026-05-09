@@ -4,7 +4,6 @@ package p1.component.agent.gamer.bridge;
  * 桥接层记录的队列执行状态。
  * <p>
  * 这个状态来自虚拟工具 enqueue_operations 的 status 参数，用于让外层游戏循环获得结构化结果。
- * 游戏循环不再从 agent 自然语言回复中截取 [CONTINUE]、[WAIT] 或 [GAME_OVER]。
  */
 public enum GameBridgeActionStatus {
     CONTINUE,

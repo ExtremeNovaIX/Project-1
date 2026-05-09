@@ -19,6 +19,8 @@ import org.springframework.util.StringUtils;
 import p1.benchmark.halumem.HaluMemMemoryJudgeAiService;
 import p1.benchmark.halumem.HaluMemQaAnswerAiService;
 import p1.benchmark.halumem.HaluMemQaJudgeAiService;
+import p1.component.agent.factory.ChatModelFactory;
+import p1.component.agent.factory.EmbeddingModelFactory;
 import p1.component.agent.gamer.memory.GamerMemoryCompressorAiService;
 import p1.component.agent.memory.*;
 import p1.component.agent.rp.CallSolverTool;
@@ -33,10 +35,7 @@ import p1.service.ChatLogRepository;
 import p1.service.markdown.RawMdService;
 import p1.utils.SessionUtil;
 
-import java.net.URI;
-import java.net.http.HttpClient;
 import java.time.Duration;
-import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -49,35 +48,37 @@ public class AiConfig {
     private final Map<String, ArchivableChatMemory> memoryCache = new ConcurrentHashMap<>();
     private final AiServiceLoggingListener aiServiceLoggingListener;
     private final AssistantLoggingListener assistantLoggingListener;
+    private final ChatModelFactory chatModelFactory;
+    private final EmbeddingModelFactory embeddingModelFactory;
 
     @Bean
     public ChatModel chatLanguageModel() {
         AssistantProperties.ChatModelConfig chatModelConfig = props.activeChatModel();
-        return buildChatModel(chatModelConfig, assistantLoggingListener, null);
+        return chatModelFactory.buildChatModel(chatModelConfig, assistantLoggingListener, null);
     }
 
     @Bean(name = "rpChatModel")
     public ChatModel rpChatModel() {
         AssistantProperties.ChatModelConfig chatModelConfig = props.activeChatModel();
-        return buildChatModel(chatModelConfig, assistantLoggingListener, 0.8);
+        return chatModelFactory.buildChatModel(chatModelConfig, assistantLoggingListener, 0.8);
     }
 
     @Bean(name = "backendChatModel")
     public ChatModel backendChatModel() {
         AssistantProperties.ChatModelConfig config = props.activeChatModel();
-        return buildChatModel(config, aiServiceLoggingListener, 0.0);
+        return chatModelFactory.buildChatModel(config, aiServiceLoggingListener, 0.0);
     }
 
     @Bean(name = "supervisorChatModel")
     public ChatModel supervisorChatModel() {
         AssistantProperties.ChatModelConfig config = props.activeChatModel();
-        return buildChatModel(config, aiServiceLoggingListener, 0.0, true);
+        return chatModelFactory.buildChatModel(config, aiServiceLoggingListener, 0.0, true);
     }
 
     @Bean(name = "gamerChatModel")
     public ChatModel gamerChatModel() {
         AssistantProperties.ChatModelConfig config = props.activeChatModel();
-        return buildChatModel(config, aiServiceLoggingListener, 0.3);
+        return chatModelFactory.buildChatModel(config, aiServiceLoggingListener, 0.3);
     }
 
     @Bean
@@ -158,20 +159,7 @@ public class AiConfig {
 
     @Bean
     public EmbeddingModel embeddingModel() {
-        AssistantProperties.EmbeddingModelConfig embeddingModelConfig = props.activeEmbeddingModel();
-        OpenAiEmbeddingModel.OpenAiEmbeddingModelBuilder builder = OpenAiEmbeddingModel.builder()
-                .baseUrl(embeddingModelConfig.getBaseUrl())
-                .modelName(embeddingModelConfig.getModelName());
-
-        if (StringUtils.hasText(embeddingModelConfig.getApiKey())) {
-            builder.apiKey(embeddingModelConfig.getApiKey());
-        }
-
-        if (isLocalOpenAiCompatibleEndpoint(embeddingModelConfig.getBaseUrl())) {
-            builder.httpClientBuilder(localHttpClientBuilder(Duration.ofSeconds(30)));
-        }
-
-        return builder.build();
+        return embeddingModelFactory.buildEmbeddingModel();
     }
 
     @Bean
@@ -179,115 +167,12 @@ public class AiConfig {
         return args -> {
             AssistantProperties.ChatModelConfig chatModel = props.activeChatModel();
             AssistantProperties.EmbeddingModelConfig embeddingModel = props.activeEmbeddingModel();
-            AssistantProperties.ChatModelConfig testChatModel = props.getTestAi().getChatModel();
-            log.info("AI mode: {} | chat-model: {} @ {} | embedding-model: {} @ {}",
+            log.info("LLM mode: {} | chat-model: {} @ {} | embedding-model: {} @ {}",
                     props.getMode(),
                     chatModel.getModelName(),
                     chatModel.getBaseUrl(),
                     embeddingModel.getModelName(),
                     embeddingModel.getBaseUrl());
-            log.info("Test AI model: {} @ {}",
-                    testChatModel.getModelName(),
-                    testChatModel.getBaseUrl());
         };
-    }
-
-    private ChatModel buildChatModel(AssistantProperties.ChatModelConfig config,
-                                     ChatModelListener listener,
-                                     Double temperature) {
-        return buildChatModel(config, listener, temperature, false);
-    }
-
-    private ChatModel buildChatModel(AssistantProperties.ChatModelConfig config,
-                                     ChatModelListener listener,
-                                     Double temperature,
-                                     boolean structuredOutputFriendly) {
-        boolean responseFormatJsonSchemaSupported = supportsResponseFormatJsonSchema(config);
-        OpenAiChatModel.OpenAiChatModelBuilder builder = OpenAiChatModel.builder()
-                .baseUrl(config.getBaseUrl())
-                .modelName(config.getModelName())
-                .timeout(Duration.ofSeconds(config.getTimeoutSeconds()))
-                .logRequests(config.isLogEnabled())
-                .logResponses(config.isLogEnabled());
-
-        if (StringUtils.hasText(config.getApiKey())) {
-            builder.apiKey(config.getApiKey());
-        }
-
-        if (supportsDeepSeekThinkingToggle(config)) {
-            builder.customParameters(Map.of("thinking", Map.of("type", "disabled")));
-        }
-
-        if (isLocalOpenAiCompatibleEndpoint(config.getBaseUrl())) {
-            builder.httpClientBuilder(localHttpClientBuilder(Duration.ofSeconds(config.getTimeoutSeconds())));
-        }
-
-        if (listener != null) {
-            builder.listeners(Collections.singletonList(listener));
-        }
-        if (temperature != null) {
-            builder.temperature(temperature);
-        }
-        if (structuredOutputFriendly) {
-            builder.parallelToolCalls(false);
-            if (responseFormatJsonSchemaSupported) {
-                builder.supportedCapabilities(Capability.RESPONSE_FORMAT_JSON_SCHEMA)
-                        .strictJsonSchema(true);
-            }
-        }
-        return builder.build();
-    }
-
-    private boolean supportsResponseFormatJsonSchema(AssistantProperties.ChatModelConfig config) {
-        String baseUrl = config.getBaseUrl();
-        if (!StringUtils.hasText(baseUrl)) {
-            return false;
-        }
-        try {
-            String host = URI.create(baseUrl).getHost();
-            if (host == null) {
-                return false;
-            }
-            String normalizedHost = host.toLowerCase();
-            return normalizedHost.endsWith("openai.com");
-        } catch (IllegalArgumentException ignored) {
-            return false;
-        }
-    }
-
-    private boolean supportsDeepSeekThinkingToggle(AssistantProperties.ChatModelConfig config) {
-        String baseUrl = config.getBaseUrl();
-        if (!StringUtils.hasText(baseUrl)) {
-            return false;
-        }
-        try {
-            String host = URI.create(baseUrl).getHost();
-            if (host == null) {
-                return false;
-            }
-            String normalizedHost = host.toLowerCase();
-            return normalizedHost.endsWith("deepseek.com");
-        } catch (IllegalArgumentException ignored) {
-            return false;
-        }
-    }
-
-    private boolean isLocalOpenAiCompatibleEndpoint(String baseUrl) {
-        if (!StringUtils.hasText(baseUrl)) {
-            return false;
-        }
-        try {
-            String host = URI.create(baseUrl).getHost();
-            return "127.0.0.1".equals(host) || "localhost".equalsIgnoreCase(host);
-        } catch (IllegalArgumentException ignored) {
-            return false;
-        }
-    }
-
-    private JdkHttpClientBuilder localHttpClientBuilder(Duration readTimeout) {
-        return new JdkHttpClientBuilder()
-                .httpClientBuilder(HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1))
-                .connectTimeout(Duration.ofSeconds(10))
-                .readTimeout(readTimeout);
     }
 }

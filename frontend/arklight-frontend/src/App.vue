@@ -8,6 +8,7 @@ import BackendSettingsPanel from './setting/BackendSettingsPanel.vue';
 import FrontendSettingsPanel from './setting/FrontendSettingsPanel.vue';
 import {
   createFrontendSettings,
+  applyExternalFrontendDefaults,
   getDefaultFrontendSettings,
   normalizeFrontendSettings,
   saveFrontendSettings
@@ -23,6 +24,7 @@ interface AssistantReplyStep {
 }
 
 const frontendSettings = createFrontendSettings();
+const externalDefaultSettings = ref<FrontendSettings | null>(null);
 
 const messages = ref<Message[]>([]);
 
@@ -295,7 +297,7 @@ const updateFrontendSettings = (nextSettings: FrontendSettings) => {
 };
 
 const resetFrontendSettings = () => {
-  applyFrontendSettings(getDefaultFrontendSettings(frontendSettings.value.themeId));
+  applyFrontendSettings(externalDefaultSettings.value ?? getDefaultFrontendSettings(frontendSettings.value.themeId));
 };
 
 const updateBackendBaseUrl = (baseUrl: string) => {
@@ -515,7 +517,8 @@ watch(
   { flush: 'post' }
 );
 
-onMounted(() => {
+onMounted(async () => {
+  externalDefaultSettings.value = await applyExternalFrontendDefaults(frontendSettings);
   startBootSequence();
   void loadCharacters();
 });

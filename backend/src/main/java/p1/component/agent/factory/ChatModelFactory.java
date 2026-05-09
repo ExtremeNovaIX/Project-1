@@ -12,7 +12,6 @@ import p1.utils.HttpUtil;
 import java.net.URI;
 import java.time.Duration;
 import java.util.Collections;
-import java.util.Map;
 
 @Component
 public class ChatModelFactory {
@@ -33,14 +32,13 @@ public class ChatModelFactory {
                 .modelName(config.getModelName())
                 .timeout(Duration.ofSeconds(config.getTimeoutSeconds()))
                 .logRequests(config.isLogEnabled())
-                .logResponses(config.isLogEnabled());
+                .logResponses(config.isLogEnabled())
+                // 保留 OpenAI-compatible 接口返回的 reasoning_content，并在后续请求中按原字段带回。
+                .returnThinking(true)
+                .sendThinking(true, "reasoning_content");
 
         if (StringUtils.hasText(config.getApiKey())) {
             builder.apiKey(config.getApiKey());
-        }
-
-        if (supportsDeepSeekThinkingToggle(config)) {
-            builder.customParameters(Map.of("thinking", Map.of("type", "disabled")));
         }
 
         if (HttpUtil.isLocalEndpoint(config.getBaseUrl())) {
@@ -80,20 +78,4 @@ public class ChatModelFactory {
         }
     }
 
-    private boolean supportsDeepSeekThinkingToggle(AssistantProperties.ChatModelConfig config) {
-        String baseUrl = config.getBaseUrl();
-        if (!StringUtils.hasText(baseUrl)) {
-            return false;
-        }
-        try {
-            String host = URI.create(baseUrl).getHost();
-            if (host == null) {
-                return false;
-            }
-            String normalizedHost = host.toLowerCase();
-            return normalizedHost.endsWith("deepseek.com");
-        } catch (IllegalArgumentException ignored) {
-            return false;
-        }
-    }
 }

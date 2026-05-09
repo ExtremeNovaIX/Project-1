@@ -1,13 +1,8 @@
 package p1.config;
 
-import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
-import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.openai.OpenAiChatModel;
-import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
 import dev.langchain4j.service.AiServices;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,7 +10,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.util.StringUtils;
 import p1.benchmark.halumem.HaluMemMemoryJudgeAiService;
 import p1.benchmark.halumem.HaluMemQaAnswerAiService;
 import p1.benchmark.halumem.HaluMemQaJudgeAiService;
@@ -35,7 +29,6 @@ import p1.service.ChatLogRepository;
 import p1.service.markdown.RawMdService;
 import p1.utils.SessionUtil;
 
-import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 

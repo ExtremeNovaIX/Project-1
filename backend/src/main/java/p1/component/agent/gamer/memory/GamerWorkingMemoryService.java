@@ -71,6 +71,7 @@ public class GamerWorkingMemoryService {
      * @param memoryId        游戏会话 key
      * @param status          本次队列状态
      * @param summary         agent 提交的决策摘要
+     * @param reasoning       模型返回的 reasoning_content；没有时为空
      * @param operations      agent 提交的操作队列
      * @param result          桥接层执行结果
      * @param interruptReason 队列中断原因；没有中断时为空
@@ -79,6 +80,7 @@ public class GamerWorkingMemoryService {
                                   String memoryId,
                                   GameBridgeActionStatus status,
                                   String summary,
+                                  String reasoning,
                                   List<GameOperation> operations,
                                   String result,
                                   String interruptReason) {
@@ -91,6 +93,7 @@ public class GamerWorkingMemoryService {
                     memoryId,
                     status == null ? GameBridgeActionStatus.UNKNOWN : status,
                     normalize(summary),
+                    normalize(reasoning),
                     renderOperations(operations),
                     normalize(result),
                     normalize(interruptReason));
@@ -318,6 +321,7 @@ public class GamerWorkingMemoryService {
             sb.append(index++).append(". status=").append(record.status())
                     .append(" | time=").append(record.timestamp())
                     .append("\n   决策说明：").append(blankText(record.summary()))
+                    .append("\n   模型推理：").append(blankText(record.reasoning()))
                     .append("\n   操作：").append(record.operations().isEmpty() ? "无" : String.join("; ", record.operations()))
                     .append("\n   执行结果：").append(blankText(record.result()));
             if (record.interruptReason() != null && !record.interruptReason().isBlank()) {

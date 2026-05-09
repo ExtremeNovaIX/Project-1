@@ -102,6 +102,18 @@ public interface GameAdapter {
     }
 
     /**
+     * 根据已经获取到的游戏状态判断是否需要 agent 行动。
+     * <p>
+     * 默认返回可行动，以保持通用适配器的旧行为；具体游戏可覆写为更精确的判断。
+     *
+     * @param state 最新游戏状态快照
+     * @return 当前行动窗口判断结果
+     */
+    default GameActionability evaluateActionability(GameStateSnapshot state) {
+        return GameActionability.actionable("通用适配器默认认为当前状态可行动");
+    }
+
+    /**
      * 将游戏状态渲染为注入给 agent 的文本。
      *
      * @param state 游戏状态快照
@@ -109,6 +121,30 @@ public interface GameAdapter {
      */
     default String renderStateForAgent(GameStateSnapshot state) {
         return state.rawJson();
+    }
+
+    /**
+     * 将两份状态快照渲染成面向 agent 的操作结果差异。
+     * <p>
+     * 通用默认实现只比较 state_type；具体游戏适配器可以覆写为更有语义的白名单 diff。
+     *
+     * @param before 操作队列执行前状态
+     * @param after  操作队列执行后状态
+     * @return 适合放入 prompt 和复盘日志的状态差异文本
+     */
+    default String renderStateDiffForAgent(GameStateSnapshot before, GameStateSnapshot after) {
+        String beforeType = before == null ? "" : before.stateType();
+        String afterType = after == null ? "" : after.stateType();
+        if (beforeType == null || beforeType.isBlank()) {
+            beforeType = "(未知)";
+        }
+        if (afterType == null || afterType.isBlank()) {
+            afterType = "(未知)";
+        }
+        if (beforeType.equals(afterType)) {
+            return "- state_type: 无变化 (" + afterType + ")";
+        }
+        return "- state_type: " + beforeType + " -> " + afterType;
     }
 
     // ── 操作队列钩子（含合理默认实现） ──
@@ -170,6 +206,48 @@ public interface GameAdapter {
     }
 
     /**
+     * 从 MCP 工具返回值中提取业务错误。
+     * <p>
+     * 默认只识别通用 JSON 结构：{"status":"error","error":"..."}。
+     * 连接失败、HTTP 异常等基础设施错误通常不会进入这里，而是在工具调用阶段直接抛异常。
+     *
+     * @param toolResult MCP 工具返回文本
+     * @return 错误说明；不是业务错误时返回 null
+     */
+    default String extractToolError(String toolResult) {
+        if (toolResult == null || toolResult.isBlank()) {
+            return null;
+        }
+        try {
+            JsonNode root = new ObjectMapper().readTree(toolResult);
+            if ("error".equals(root.path("status").asText(""))) {
+                return root.path("error").asText("未知错误");
+            }
+        } catch (Exception ignored) {
+            // 非 JSON 返回值不是可恢复业务错误，由调用方按硬错误处理。
+        }
+        return null;
+    }
+
+    /**
+     * 判断单条操作失败后是否可以丢弃该操作并继续执行队列。
+     * <p>
+     * 默认保守返回 false；具体游戏可基于最新状态判断当前行动窗口是否仍可靠。
+     *
+     * @param operation   失败的操作
+     * @param beforeState 失败前状态
+     * @param afterState  失败后重新获取到的最新状态
+     * @param reason      失败原因
+     * @return true 表示记录软错误并继续后续操作
+     */
+    default boolean shouldContinueAfterOperationFailure(QueuedGameOperation operation,
+                                                       GameStateSnapshot beforeState,
+                                                       GameStateSnapshot afterState,
+                                                       String reason) {
+        return false;
+    }
+
+    /**
      * 判断某个 MCP 工具是否是状态查询工具。
      *
      * @param toolName MCP 工具名
@@ -188,6 +266,22 @@ public interface GameAdapter {
      * @return 可用操作工具的说明文本
      */
     default String renderAvailableOperations(ToolProviderResult tools, MCPProperties.GameMCPConfig config) {
+        return renderAvailableOperations(tools, config, null);
+    }
+
+    /**
+     * 根据当前状态渲染可供 agent 提交到 operations 的 MCP 操作工具列表。
+     * <p>
+     * 默认实现只过滤状态工具；具体游戏可以根据 state_type 收窄工具列表，减少模型误选和 prompt 体积。
+     *
+     * @param tools  底层 MCP 工具集合
+     * @param config 游戏 MCP 配置
+     * @param state  最新游戏状态；为空时按通用规则渲染
+     * @return 可用操作工具的说明文本
+     */
+    default String renderAvailableOperations(ToolProviderResult tools,
+                                             MCPProperties.GameMCPConfig config,
+                                             GameStateSnapshot state) {
         StringBuilder sb = new StringBuilder();
         tools.tools().keySet().stream()
                 .filter(spec -> !isStateTool(spec.name(), config))

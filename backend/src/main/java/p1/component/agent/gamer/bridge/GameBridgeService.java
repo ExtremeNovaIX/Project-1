@@ -9,10 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import p1.component.agent.gamer.GameSessionKey;
 import p1.component.agent.gamer.GamerMCPClientFactory;
-import p1.component.agent.gamer.adapter.GameAdapter;
-import p1.component.agent.gamer.adapter.GameAdapterContext;
-import p1.component.agent.gamer.adapter.GameAdapterRegistry;
-import p1.component.agent.gamer.adapter.GameStateSnapshot;
+import p1.component.agent.gamer.adapter.*;
 import p1.component.agent.gamer.memory.GamerWorkingMemoryService;
 import p1.config.mcp.MCPProperties;
 
@@ -71,17 +68,26 @@ public class GameBridgeService {
 
         // 上一轮队列中断原因会随最新状态一并注入，要求 agent 放弃旧计划重新决策。
         String notice = queueProcessor.consumeNotice(memoryId);
+        String lastActionResult = queueProcessor.peekLastActionResult(memoryId);
         String workingMemory = workingMemoryService.renderMemory(gameName, memoryId);
         StringBuilder sb = new StringBuilder();
         sb.append("<bridge_rules>\n")
                 .append("- 系统已经注入最新游戏状态，不要调用任何状态查询工具。\n")
-                .append("- 游戏操作必须通过 `").append(GameBridgeToolProvider.ENQUEUE_TOOL_NAME).append("` 一次提交一个操作队列。\n")
+                .append("- 游戏操作必须通过 `").append(GameBridgeToolProvider.ENQUEUE_TOOL_NAME).append("` 一次提交一个候选操作队列。\n")
                 .append("- operations 中的每一项使用下方列出的 MCP 工具名和参数；桥接层会逐条执行。\n")
-                .append("- 如果桥接层报告队列中断，立即基于最新状态重新决策，不要沿用旧队列。\n")
+                .append("- MCP 业务失败后，如果最新状态仍可行动，桥接层会记录错误、跳过失败操作并继续剩余队列。\n")
+                .append("- state_type 变化、进入新界面、抽牌/弃牌导致手牌不可预测变化时，桥接层会中断队列并丢弃剩余操作。\n")
+                .append("- 如果桥接层报告队列中断，立即基于 latest_game_state 重新决策，不要沿用旧队列。\n")
+                .append("- 抽牌、弃牌、随机、领取奖励、打开选择界面等会改变行动窗口的操作应放在队列末尾。\n")
                 .append("- gamer_memory 只是历史决策摘要，不能覆盖 latest_game_state 中的当前事实。\n")
                 .append("</bridge_rules>\n\n");
         if (notice != null && !notice.isBlank()) {
             sb.append("<bridge_notice>\n").append(notice).append("\n</bridge_notice>\n\n");
+        }
+        if (lastActionResult != null && !lastActionResult.isBlank()) {
+            sb.append("<last_action_result>\n")
+                    .append(lastActionResult)
+                    .append("\n</last_action_result>\n\n");
         }
         sb.append("<gamer_memory>\n")
                 .append(workingMemory)
@@ -90,12 +96,31 @@ public class GameBridgeService {
                 .append(adapter.renderStateForAgent(state))
                 .append("\n</latest_game_state>\n\n")
                 .append("<available_operations>\n")
-                .append(adapter.renderAvailableOperations(tools, config))
+                .append(adapter.renderAvailableOperations(tools, config, state))
                 .append("</available_operations>\n\n")
                 .append("<user_instruction>\n")
                 .append(userMessage == null ? "" : userMessage)
                 .append("\n</user_instruction>");
         return sb.toString();
+    }
+
+    /**
+     * 探测当前游戏会话是否需要 agent 行动。
+     * <p>
+     * 桥接层统一负责获取最新 MCP 状态；适配器只负责解释这份状态是否可行动。
+     *
+     * @param gameName  游戏名
+     * @param sessionId 用户侧会话 id
+     * @return 当前行动窗口判断结果
+     */
+    public GameActionability probeActionability(String gameName, String sessionId) {
+        String memoryId = GameSessionKey.of(gameName, sessionId);
+        MCPProperties.GameMCPConfig config = requireConfig(gameName);
+        GameAdapter adapter = adapterRegistry.getAdapter(gameName, config);
+        ToolProvider rawProvider = mcpClientFactory.getToolProvider(gameName);
+        ToolProviderResult tools = rawProvider.provideTools(new ToolProviderRequest(memoryId, UserMessage.from("probe game actionability")));
+        GameStateSnapshot state = adapter.fetchState(new GameAdapterContext(gameName, memoryId, tools, config));
+        return adapter.evaluateActionability(state);
     }
 
     /**

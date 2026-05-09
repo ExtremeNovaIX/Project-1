@@ -4,11 +4,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.service.AiServices;
-import dev.langchain4j.service.MemoryId;
-import dev.langchain4j.service.SystemMessage;
-import dev.langchain4j.service.UserMessage;
-import dev.langchain4j.service.V;
+import dev.langchain4j.service.*;
 import org.junit.jupiter.api.Test;
 import p1.component.agent.gamer.memory.TurnScopedGamerChatMemory;
 

@@ -5,7 +5,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import p1.component.agent.gamer.GamerAgentService;
+import p1.component.agent.gamer.adapter.GameActionability;
+import p1.component.agent.gamer.adapter.GameActionabilityStatus;
 import p1.component.agent.gamer.bridge.GameBridgeActionStatus;
+import p1.component.agent.gamer.bridge.GameBridgeService;
 import p1.config.mcp.GameLoopProperties;
 
 import java.util.Collection;
@@ -27,6 +30,7 @@ public class GamerGameLoopService {
     private static final int MAX_CONSECUTIVE_FAILURES = 5;
 
     private final GamerAgentService agentService;
+    private final GameBridgeService bridgeService;
     private final ActiveGameRegistry registry;
     private final GameLoopProperties props;
     private final Map<String, ReentrantLock> sessionLocks = new ConcurrentHashMap<>();
@@ -36,7 +40,7 @@ public class GamerGameLoopService {
      * <p>
      * 每个会话会先尝试获取循环锁；如果上一轮还在处理同一会话，则跳过本次 tick。
      */
-    @Scheduled(fixedDelayString = "${gamer.game-loop.poll-interval-ms:2000}")
+    @Scheduled(fixedDelayString = "${gamer.game-loop.poll-interval-ms:500}")
     public void pollTick() {
         Collection<ActiveGameSession> sessions = registry.listRunning();
         if (sessions.isEmpty()) {
@@ -61,16 +65,19 @@ public class GamerGameLoopService {
         if (session.getState() != ActiveGameSession.State.RUNNING) {
             return;
         }
-
         ReentrantLock lock = sessionLock(session.getGameName(), session.getSessionId());
         if (!lock.tryLock()) {
-            log.debug("[Gamer Agent循环] 会话仍在处理中，跳过本次 tick: game={}, session={}",
-                    session.getGameName(), session.getSessionId());
+            log.debug("[Gamer Agent循环] 会话仍在处理中，跳过本次 tick: game={}, session={}", session.getGameName(), session.getSessionId());
             return;
         }
 
         try {
             processSessionWithImmediateReplan(session);
+        } catch (Exception e) {
+            log.error("[Gamer Agent循环] 行动窗口探测失败: game={}, session={}",
+                    session.getGameName(), session.getSessionId(), e);
+            handleFailure(session);
+            session.touch();
         } finally {
             lock.unlock();
         }
@@ -84,6 +91,21 @@ public class GamerGameLoopService {
     private void processSessionWithImmediateReplan(ActiveGameSession session) {
         int immediateReplans = 0;
         while (session.getState() == ActiveGameSession.State.RUNNING) {
+            GameActionability actionability = bridgeService.probeActionability(session.getGameName(), session.getSessionId());
+            if (actionability.status() == GameActionabilityStatus.GAME_OVER) {
+                log.info("[Gamer Agent循环] 探测到游戏结束，停止会话: game={}, session={}, reason={}",
+                        session.getGameName(), session.getSessionId(), actionability.reason());
+                session.setState(ActiveGameSession.State.STOPPED);
+                return;
+            }
+            if (!actionability.actionable()) {
+                log.debug("[Gamer Agent循环] 当前无需行动: game={}, session={}, status={}, reason={}",
+                        session.getGameName(), session.getSessionId(), actionability.status(), actionability.reason());
+                session.resetFailures();
+                session.touch();
+                return;
+            }
+
             int totalSteps = session.incrementAndGetTotalSteps();
             try {
                 agentService.play(session.getGameName(), session.getSessionId(), nextPrompt(immediateReplans));

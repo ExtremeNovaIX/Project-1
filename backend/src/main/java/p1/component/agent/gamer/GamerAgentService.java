@@ -5,6 +5,7 @@ import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
 import dev.langchain4j.service.tool.ToolProvider;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import p1.component.agent.gamer.bridge.GameBridgeActionStatus;
@@ -99,7 +100,13 @@ public class GamerAgentService {
         String memoryId = GameSessionKey.of(gameName, sessionId);
         ReentrantLock lock = getSessionLock(memoryId);
         lock.lock();
+        String previousSessionId = MDC.get("sessionId");
+        String previousServiceInfo = MDC.get("serviceInfo");
         try {
+            // gamer 使用单独 memoryId 写入 MDC，方便日志和 reasoning_content 暂存按游戏会话归档。
+            MDC.put("sessionId", memoryId);
+            MDC.put("serviceInfo", "gamer");
+
             // 每次调用前重新构建上下文，保证状态和可用工具都是最新的。
             GamerAgent agent = buildAgent(gameName, sessionId);
             String displayName = mcpClientFactory.getGameDisplayName(gameName);
@@ -109,8 +116,24 @@ public class GamerAgentService {
             return result == null || result.content() == null ? "" : result.content();
         } finally {
             // 同一游戏会话必须串行执行，避免用户指令和定时循环同时操作 MCP。
+            restoreMdc("sessionId", previousSessionId);
+            restoreMdc("serviceInfo", previousServiceInfo);
             lock.unlock();
         }
+    }
+
+    /**
+     * 恢复进入 gamer 调用前的 MDC 字段。
+     *
+     * @param key      MDC 字段名
+     * @param oldValue 进入 gamer 调用前的字段值
+     */
+    private void restoreMdc(String key, String oldValue) {
+        if (oldValue == null) {
+            MDC.remove(key);
+            return;
+        }
+        MDC.put(key, oldValue);
     }
 
     /**

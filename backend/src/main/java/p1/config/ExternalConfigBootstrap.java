@@ -8,8 +8,6 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +25,12 @@ public final class ExternalConfigBootstrap {
     private static final String CONFIG_DIR_ENV = "ARCLIGHT_CONFIG_DIR";
     private static final String DEFAULT_CONFIG_DIR = "../config";
     private static final String SPRING_ADDITIONAL_LOCATION = "spring.config.additional-location";
+    private static final List<String> DEFAULT_YAML_FILES = List.of(
+            "application.yaml",
+            "application-benchmark.yaml",
+            "application-mcp.yaml",
+            "mcp-catalog.yaml"
+    );
 
     private ExternalConfigBootstrap() {
     }
@@ -57,42 +61,22 @@ public final class ExternalConfigBootstrap {
     }
 
     /**
-     * 扫描 classpath 根目录下的 yaml/yml 默认配置。
+     * 加载本项目明确支持的默认 yaml 配置。
+     * <p>
+     * 不使用 classpath*:*.yaml 全量扫描，避免把依赖包根目录里的 config.yaml 等无关文件复制到外部配置目录。
      *
-     * @return 按文件名去重后的 yaml 资源列表
+     * @return 按 DEFAULT_YAML_FILES 顺序排列的 yaml 资源列表
      */
     private static List<YamlResource> discoverYamlResources() {
         PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
         Map<String, YamlResource> resources = new LinkedHashMap<>();
-        discoverYamlResources(resolver, "classpath*:*.yaml", resources);
-        discoverYamlResources(resolver, "classpath*:*.yml", resources);
-        List<YamlResource> sorted = new ArrayList<>(resources.values());
-        sorted.sort(Comparator.comparing(YamlResource::fileName));
-        return sorted;
-    }
-
-    /**
-     * 扫描一个 classpath pattern，并把结果加入资源表。
-     *
-     * @param resolver  Spring 资源解析器
-     * @param pattern   classpath 扫描表达式
-     * @param resources 按文件名去重的资源表
-     */
-    private static void discoverYamlResources(PathMatchingResourcePatternResolver resolver,
-                                              String pattern,
-                                              Map<String, YamlResource> resources) {
-        try {
-            for (Resource resource : resolver.getResources(pattern)) {
-                String fileName = resource.getFilename();
-                if (fileName == null || fileName.isBlank()) {
-                    continue;
-                }
-                // 同名资源只复制一次；主资源和测试资源重名时，先发现者作为默认模板。
-                resources.putIfAbsent(fileName, new YamlResource(fileName, resource));
+        for (String fileName : DEFAULT_YAML_FILES) {
+            Resource resource = resolver.getResource("classpath:" + fileName);
+            if (resource.exists()) {
+                resources.put(fileName, new YamlResource(fileName, resource));
             }
-        } catch (IOException e) {
-            throw new IllegalStateException("扫描 classpath yaml 配置失败: " + pattern, e);
         }
+        return List.copyOf(resources.values());
     }
 
     /**

@@ -5,9 +5,9 @@ import dev.langchain4j.model.output.structured.Description;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import p1.component.agent.rp.context.SummaryCacheManager;
 import p1.component.agent.memory.model.ExtractedMemoryEvent;
 import p1.component.agent.memory.model.FactExtractionPipelineResult;
+import p1.component.agent.rp.context.SummaryCacheManager;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;

@@ -4,8 +4,8 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import p1.component.agent.task.exception.TaskCheckerException;
-import p1.component.agent.task.promptrenderer.TaskBlackboardRenderer;
-import p1.component.agent.task.promptrenderer.TaskCheckerPromptRenderer;
+import p1.component.agent.task.context.TaskBlackboardRenderer;
+import p1.component.agent.task.context.TaskCheckerPromptRenderer;
 import p1.component.agent.task.state.TaskBlackboard;
 import p1.component.agent.task.supervisor.TaskSupervisorFinalDecision;
 

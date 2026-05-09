@@ -1,4 +1,4 @@
-package p1.component.agent.task.promptrenderer;
+package p1.component.agent.task.context;
 
 import p1.component.agent.task.state.TaskSupervisorBlackboardEntry;
 

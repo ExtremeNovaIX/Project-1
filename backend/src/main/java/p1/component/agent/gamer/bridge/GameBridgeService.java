@@ -17,7 +17,7 @@ import p1.component.agent.gamer.memory.GamerWorkingMemoryService;
 import p1.config.mcp.MCPProperties;
 
 /**
- * gameAgent和MCP Server的  桥接服务。
+ * gameAgent和MCP Server的桥接服务。
  * <p>
  * 该服务负责把真实 MCP 工具包装成一个虚拟批量工具，并在每次 agent 决策前注入最新游戏状态。
  */

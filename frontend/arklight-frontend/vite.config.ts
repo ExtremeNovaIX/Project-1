@@ -59,6 +59,7 @@ export default defineConfig(({mode}) => {
   const projectRoot = path.resolve(__dirname, '..', '..');
   const projectCharaRoot = path.resolve(projectRoot, 'chara');
   return {
+    base: mode === 'production' ? '/chat-ui/' : '/',
     plugins: [vue(), tailwindcss(), externalConfigPlugin(projectRoot)],
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),

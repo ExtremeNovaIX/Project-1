@@ -10,6 +10,9 @@
 /frontend/arklight-frontend/dist/
 /qt-frontend/build/
 /qt-frontend/cmake-build-*/
+/launcher/build/
+/launcher/dist/
+/dist/
 
 # Runtime data and logs
 /backend/data/

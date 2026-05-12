@@ -12,6 +12,7 @@ import p1.utils.HttpUtil;
 import java.net.URI;
 import java.time.Duration;
 import java.util.Collections;
+import java.util.Map;
 
 @Component
 public class ChatModelFactory {
@@ -33,9 +34,10 @@ public class ChatModelFactory {
                 .timeout(Duration.ofSeconds(config.getTimeoutSeconds()))
                 .logRequests(config.isLogEnabled())
                 .logResponses(config.isLogEnabled())
-                // 保留 OpenAI-compatible 接口返回的 reasoning_content，并在后续请求中按原字段带回。
+                // 保留 OpenAI-compatible 接口返回的 reasoning_content，便于日志诊断。
                 .returnThinking(true)
-                .sendThinking(true, "reasoning_content");
+                // 默认把所有接入都视为支持 OpenAI-compatible 扩展参数，统一关闭模型思考输出。
+                .customParameters(Map.of("thinking", Map.of("type", "disabled")));
 
         if (StringUtils.hasText(config.getApiKey())) {
             builder.apiKey(config.getApiKey());

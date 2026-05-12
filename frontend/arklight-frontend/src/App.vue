@@ -119,6 +119,11 @@ const getChatApiUrl = () => {
   return `${normalizedBaseUrl}/api/chat/send`;
 };
 
+const getGamerApiUrl = () => {
+  const normalizedBaseUrl = frontendSettings.value.backendBaseUrl.trim().replace(/\/+$/, '');
+  return `${normalizedBaseUrl}/api/gamer/play`;
+};
+
 const getRoleNameForRequest = () =>
   String(frontendSettings.value.characterName || activeCharacter.value?.name || '').trim();
 
@@ -429,6 +434,80 @@ const sendMessage = async () => {
   });
   userInput.value = '';
   isAssistantTyping.value = true;
+
+  // ── Gamer 模式 ──
+  if (frontendSettings.value.gamerModeEnabled) {
+    try {
+      const response = await fetch(getGamerApiUrl(), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json'
+        },
+        body: JSON.stringify({
+          gameName: frontendSettings.value.gameName || null,
+          sessionId: frontendSettings.value.sessionId,
+          message: content
+        })
+      });
+
+      const responsePayload = await response.json().catch(() => ({} as Record<string, unknown>));
+
+      if (!response.ok) {
+        const errorText = typeof (responsePayload as Record<string, unknown>)?.error === 'string'
+          ? (responsePayload as Record<string, string>).error
+          : `请求失败：${response.status} ${response.statusText}`.trim();
+        const errorMessage = createAssistantMessage(errorText);
+        if (errorMessage) {
+          messages.value.push(errorMessage);
+        }
+        isAssistantTyping.value = false;
+        return;
+      }
+
+      const gamerMessage = typeof (responsePayload as Record<string, unknown>)?.message === 'string'
+        ? (responsePayload as Record<string, string>).message
+        : '';
+      const gamerResult = typeof (responsePayload as Record<string, unknown>)?.result === 'string'
+        ? (responsePayload as Record<string, string>).result
+        : '';
+
+      if (gamerMessage) {
+        const assistantMsg = createAssistantMessage(gamerMessage);
+        if (assistantMsg) {
+          messages.value.push(assistantMsg);
+        }
+      } else if (!gamerResult) {
+        const emptyMsg = createAssistantMessage('Gamer 未生成回复。');
+        if (emptyMsg) {
+          messages.value.push(emptyMsg);
+        }
+      }
+
+      // 如果执行结果与用户消息不同，作为附加详情显示
+      if (gamerResult && gamerResult !== gamerMessage) {
+        const resultMsg = createAssistantMessage(`[执行结果] ${gamerResult}`);
+        if (resultMsg) {
+          messages.value.push(resultMsg);
+        }
+      }
+
+      isAssistantTyping.value = false;
+    } catch (error) {
+      const errorMessage = createAssistantMessage(
+        error instanceof Error
+          ? `Gamer 请求失败：${error.message}`
+          : 'Gamer 请求失败：无法连接到后端。'
+      );
+      if (errorMessage) {
+        messages.value.push(errorMessage);
+      }
+      isAssistantTyping.value = false;
+    } finally {
+      isSendLocked.value = false;
+    }
+    return;
+  }
 
   try {
     const response = await fetch(getChatApiUrl(), {

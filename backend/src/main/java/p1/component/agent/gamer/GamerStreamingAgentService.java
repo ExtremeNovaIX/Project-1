@@ -70,9 +70,9 @@ public class GamerStreamingAgentService {
      * @param gameName    游戏名
      * @param sessionId   用户侧会话 id
      * @param userMessage 外层传入的用户指令
-     * @return 已执行操作的桥接层结果摘要
+     * @return 包含用户可见消息和桥接执行结果的 GamerPlayResult
      */
-    public String play(String gameName, String sessionId, String userMessage) {
+    public GamerPlayResult play(String gameName, String sessionId, String userMessage) {
         String memoryId = GameSessionKey.of(gameName, sessionId);
         String displayName = mcpClientFactory.getGameDisplayName(gameName);
         String gameGuidelines = mcpClientFactory.getGameGuidelines(gameName);
@@ -109,7 +109,8 @@ public class GamerStreamingAgentService {
                 - 当前会从普通 response 流中解析 ACTION JSON；不要依赖 thinking/reasoning_content。
                 - 第一段尽量直接输出 JSON ACTION；必要说明写进 summary 和 note。
                 - 不要先总结全部手牌、全部敌人和全部候选路线。
-                - JSON 对象必须包含 operations；推荐包含 type/status/summary。
+                - JSON 对象必须包含 operations；推荐包含 type/status/summary/message。
+                - message 字段为用户可见的1-2句自然语言回复，说明当前操作意图。系统从第一个 ACTION 提取并展示给用户。
                 - 同一稳定行动窗口内，尽量一次提交完整确定队列。
                 - 抽牌、弃牌、随机生成、打开选择界面、确认选择、领取奖励等会改变状态的操作必须放在当前 JSON 的最后。
                 - JSON 输出后可以继续输出下一个 JSON；系统会从 response 流边解析边执行。
@@ -119,7 +120,7 @@ public class GamerStreamingAgentService {
 
                 <json_example>
                 先执行确定收益。
-                {"type":"action","status":"CONTINUE","summary":"先执行确定收益操作","operations":[{"tool":"combat_play_card","args":{"card":"痛击","target":"ENEMY_0"},"note":"先上易伤"}]}
+                {"type":"action","status":"CONTINUE","message":"先用痛击上易伤，提高后续输出。","summary":"先执行确定收益操作","operations":[{"tool":"combat_play_card","args":{"card":"痛击","target":"ENEMY_0"},"note":"先上易伤"}]}
                 </json_example>
 
                 <micro_decision_example>
@@ -155,6 +156,7 @@ public class GamerStreamingAgentService {
         private final StringBuilder responseBuffer = new StringBuilder();
         private final StringBuilder actionBuffer = new StringBuilder();
         private final StringBuilder executionResults = new StringBuilder();
+        private volatile String firstMessage = null;
         private final long startedAt = System.currentTimeMillis();
         private volatile Throwable error;
 
@@ -198,7 +200,7 @@ public class GamerStreamingAgentService {
         /**
          * 等待流式调用完成，并返回本次已经执行的桥接结果。
          */
-        private String awaitResult() {
+        private GamerPlayResult awaitResult() {
             try {
                 boolean done = finished.await(Math.max(1000, config.getMaxStreamWaitMs()), TimeUnit.MILLISECONDS);
                 if (!done) {
@@ -213,10 +215,12 @@ public class GamerStreamingAgentService {
             if (error != null) {
                 throw new IllegalStateException("gamer 流式调用失败: " + error.getMessage(), error);
             }
+            String msg = firstMessage == null ? "" : firstMessage;
             if (!executionResults.isEmpty()) {
-                return executionResults.toString().trim();
+                return new GamerPlayResult(msg, executionResults.toString().trim());
             }
-            return responseBuffer.isEmpty() ? "流式调用完成，但未捕获到可执行 JSON 操作。" : responseBuffer.toString().trim();
+            String fallbackResult = responseBuffer.isEmpty() ? "流式调用完成，但未捕获到可执行 JSON 操作。" : responseBuffer.toString().trim();
+            return new GamerPlayResult(msg, fallbackResult);
         }
 
         /**
@@ -282,6 +286,12 @@ public class GamerStreamingAgentService {
          */
         private void dispatchAction(StreamingJsonInstruction instruction) {
             int currentAction = actionCount.incrementAndGet();
+            if (currentAction == 1) {
+                String msg = instruction.json().path("message").asText(null);
+                if (msg != null && !msg.isBlank()) {
+                    firstMessage = msg.trim();
+                }
+            }
             recordReasoningSnapshot();
             appendActionLog(currentAction, instruction.rawJson());
             String result = bridgeService.executeOperationQueue(gameName, sessionId, renderStreamingArguments(instruction));

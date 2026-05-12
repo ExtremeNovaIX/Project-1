@@ -35,7 +35,7 @@ const updateNumberSetting = (
 };
 
 const handleTextInput = (
-  key: 'workspaceName' | 'operatorName' | 'backendBaseUrl' | 'sessionId',
+  key: 'workspaceName' | 'operatorName' | 'backendBaseUrl' | 'sessionId' | 'gameName',
   event: Event
 ) => {
   const target = event.target as HTMLInputElement | null;
@@ -59,7 +59,7 @@ const handleShortModeChange = (event: Event) => {
 };
 
 const handleBooleanSettingChange = (
-  key: 'bootAnimationEnabled' | 'shortModeEnabled',
+  key: 'bootAnimationEnabled' | 'shortModeEnabled' | 'gamerModeEnabled',
   event: Event
 ) => {
   const target = event.target as HTMLInputElement | null;
@@ -261,6 +261,37 @@ const getCharacterPrimaryImage = (character: CharacterProfile) =>
         @change="handleBootAnimationChange"
       />
     </label>
+    </div>
+
+    <!-- Gamer Mode Settings -->
+    <div class="grid gap-4 md:grid-cols-2">
+      <label class="flex items-center justify-between gap-4 border-2 border-[#1A1A1A] bg-[#1A1A1A] px-5 py-4 text-white">
+        <div>
+          <span class="block text-[11px] font-black uppercase tracking-[0.3em]">Gamer 模式</span>
+          <p class="mt-2 text-xs text-white/60">开启后将消息发送给 Gamer Agent 控制游戏，而非 RP 聊天。</p>
+        </div>
+        <input
+          :checked="props.settings.gamerModeEnabled"
+          type="checkbox"
+          class="h-5 w-5 accent-[#E85D04]"
+          @change="handleBooleanSettingChange('gamerModeEnabled', $event)"
+        />
+      </label>
+
+      <label
+        v-if="props.settings.gamerModeEnabled"
+        class="space-y-3 rounded-none border-2 border-[#1A1A1A] bg-white/70 p-5"
+      >
+        <span class="block text-[11px] font-black uppercase tracking-[0.3em] text-[#1A1A1A]">游戏名称</span>
+        <input
+          :value="props.settings.gameName"
+          type="text"
+          class="w-full border border-[#1A1A1A]/20 bg-[#F8F5EC] px-4 py-3 text-sm outline-none transition focus:border-[#E85D04]"
+          placeholder="例如：slay-the-spire-2"
+          @input="handleTextInput('gameName', $event)"
+        />
+        <p class="text-xs text-[#1A1A1A]/55">对应后端 MCP 配置中的游戏名。留空时使用后端默认游戏。</p>
+      </label>
     </div>
 
     <section class="space-y-4 border-t border-[#1A1A1A]/10 pt-6">

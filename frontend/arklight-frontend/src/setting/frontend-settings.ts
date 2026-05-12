@@ -44,7 +44,9 @@ export const normalizeFrontendSettings = (
     responseDelayMs: clamp(Number(value?.responseDelayMs ?? themeDefaults.responseDelayMs), 0, 10000),
     shortModeEnabled: value?.shortModeEnabled ?? themeDefaults.shortModeEnabled,
     moteCount: clamp(normalizedMoteCount <= 0 ? themeDefaults.moteCount : normalizedMoteCount, 12, 120),
-    backendBaseUrl: value?.backendBaseUrl?.trim() || themeDefaults.backendBaseUrl
+    backendBaseUrl: value?.backendBaseUrl?.trim() || themeDefaults.backendBaseUrl,
+    gamerModeEnabled: value?.gamerModeEnabled ?? themeDefaults.gamerModeEnabled,
+    gameName: value?.gameName?.trim() || themeDefaults.gameName
   };
 };
 

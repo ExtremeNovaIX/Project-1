@@ -36,7 +36,9 @@ export const registeredThemes: RegisteredTheme[] = [
       responseDelayMs: 1000,
       shortModeEnabled: true,
       moteCount: 42,
-      backendBaseUrl: 'http://localhost:8080'
+      backendBaseUrl: 'http://localhost:8080',
+      gamerModeEnabled: false,
+      gameName: ''
     },
     text: {
       bootLoadingLabel: '正在加载',
@@ -65,7 +67,9 @@ export const registeredThemes: RegisteredTheme[] = [
       responseDelayMs: 600,
       shortModeEnabled: true,
       moteCount: 28,
-      backendBaseUrl: 'http://localhost:8080'
+      backendBaseUrl: 'http://localhost:8080',
+      gamerModeEnabled: false,
+      gameName: ''
     },
     text: {
       bootLoadingLabel: '正在加载',

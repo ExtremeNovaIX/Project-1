@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import p1.component.agent.gamer.GamerAgentService;
+import p1.component.agent.gamer.GamerPlayResult;
 import p1.component.agent.gamer.GamerRequestResolver;
 import p1.component.agent.gamer.loop.ActiveGameSession;
 import p1.component.agent.gamer.loop.GamerGameLoopService;
@@ -49,12 +50,13 @@ public class GamerController {
 
         log.info("[游戏控制器] 收到游戏指令: game={}, session={}, message={}", gameName, sessionId, message);
 
-        String response = gamerAgentService.play(gameName, sessionId, message);
+        GamerPlayResult playResult = gamerAgentService.play(gameName, sessionId, message);
 
         return ResponseEntity.ok(Map.of(
                 "gameName", gameName,
                 "sessionId", sessionId,
-                "response", response
+                "message", playResult.message() == null ? "" : playResult.message(),
+                "result", playResult.result() == null ? "" : playResult.result()
         ));
     }
 

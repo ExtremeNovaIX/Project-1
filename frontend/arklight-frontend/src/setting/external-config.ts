@@ -142,6 +142,14 @@ export const buildFrontendSettingsFromConfig = (
     backendBaseUrl: readString(config, [
       'frontend.web.settings.backend-base-url',
       'frontend.settings.backend-base-url'
+    ]),
+    gamerModeEnabled: readBoolean(config, [
+      'frontend.web.settings.gamer-mode-enabled',
+      'frontend.settings.gamer-mode-enabled'
+    ]),
+    gameName: readString(config, [
+      'frontend.web.settings.game-name',
+      'frontend.settings.game-name'
     ])
   };
 };

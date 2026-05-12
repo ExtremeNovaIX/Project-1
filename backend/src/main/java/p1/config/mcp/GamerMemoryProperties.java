@@ -36,4 +36,10 @@ public class GamerMemoryProperties {
      * gamer 决策复盘 Markdown 输出目录。
      */
     private String traceDirectory = "data/gamer-traces";
+
+    /**
+     * 工作记忆中保留的用户消息最大数量。
+     * 超过上限后旧消息会被丢弃。
+     */
+    private int maxUserMessages = 20;
 }

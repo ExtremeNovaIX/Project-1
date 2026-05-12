@@ -89,6 +89,7 @@ public class GameBridgeToolProvider implements ToolProvider {
                 .addEnumProperty("status", List.of("CONTINUE", "WAIT", "GAME_OVER"),
                         "本批操作后的预期状态。没有可执行操作时填 WAIT。")
                 .addStringProperty("summary", "必填。本批操作的最终决策摘要；只写结论和关键依据，不写推导过程，不输出 JSON 文本")
+                .addStringProperty("message", "用户可见的自然语言回复（1-3句话）。必须在提交操作前向用户简要说明当前计划。")
                 .addProperty("operations", JsonArraySchema.builder()
                         .description("必填。按顺序执行的候选操作队列。底层仍然一次执行一条 MCP 指令，单条失败可由桥接层记录后跳过；等待时传空数组")
                         .items(operationSchema)

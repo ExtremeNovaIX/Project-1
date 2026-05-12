@@ -101,9 +101,9 @@ public class GamerAgentService {
      * @param gameName    游戏名
      * @param sessionId   用户侧会话 id
      * @param userMessage 外层传入的用户指令
-     * @return 游戏智能体或桥接工具返回的文本
+     * @return 包含用户可见消息和桥接执行结果的 GamerPlayResult
      */
-    public String play(String gameName, String sessionId, String userMessage) {
+    public GamerPlayResult play(String gameName, String sessionId, String userMessage) {
         String memoryId = GameSessionKey.of(gameName, sessionId);
         ReentrantLock lock = getSessionLock(memoryId);
         lock.lock();
@@ -134,16 +134,18 @@ public class GamerAgentService {
      * @param sessionId   用户侧会话 id
      * @param userMessage 外层传入的用户指令
      * @param memoryId    gamer 统一会话 key
-     * @return 模型或工具返回文本
+     * @return 包含用户可见消息和桥接执行结果的 GamerPlayResult
      */
-    private String playWithToolCalling(String gameName, String sessionId, String userMessage, String memoryId) {
+    private GamerPlayResult playWithToolCalling(String gameName, String sessionId, String userMessage, String memoryId) {
         // 每次调用前重新构建上下文，保证状态和可用工具都是最新的。
         GamerAgent agent = buildAgent(gameName, sessionId);
         String displayName = mcpClientFactory.getGameDisplayName(gameName);
         String gameGuidelines = mcpClientFactory.getGameGuidelines(gameName);
         String context = bridgeService.buildAgentContext(gameName, sessionId, userMessage);
         Result<String> result = agent.play(memoryId, context, displayName, gameGuidelines);
-        return result == null || result.content() == null ? "" : result.content();
+        String resultContent = result == null || result.content() == null ? "" : result.content();
+        String message = bridgeService.lastUserMessage(gameName, sessionId);
+        return new GamerPlayResult(message, resultContent);
     }
 
     /**

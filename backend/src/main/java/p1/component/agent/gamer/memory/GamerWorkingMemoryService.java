@@ -36,6 +36,27 @@ public class GamerWorkingMemoryService {
     private GamerWorkingMemoryService self;
 
     /**
+     * 记录用户发送给 gamer 的聊天消息。
+     *
+     * @param gameName    游戏名
+     * @param memoryId    游戏会话 key
+     * @param userMessage 用户消息文本
+     */
+    public void recordUserMessage(String gameName, String memoryId, String userMessage) {
+        if (userMessage == null || userMessage.isBlank()) {
+            return;
+        }
+        SessionMemory memory = memory(gameName, memoryId);
+        synchronized (memory) {
+            memory.userMessages.add(new UserMessageRecord(Instant.now(), normalize(userMessage)));
+            int maxUserMessages = Math.max(1, properties.getMaxUserMessages());
+            while (memory.userMessages.size() > maxUserMessages) {
+                memory.userMessages.removeFirst();
+            }
+        }
+    }
+
+    /**
      * 观察最新状态，用于发现楼层或大状态变化并触发阶段压缩。
      *
      * @param gameName 游戏名
@@ -123,6 +144,17 @@ public class GamerWorkingMemoryService {
         synchronized (memory) {
             StringBuilder sb = new StringBuilder();
             sb.append("说明：这是 gamer 的纯内存工作记忆，只记录历史决策摘要和执行反馈；最新游戏状态以 <latest_game_state> 为准。\n");
+
+            // 渲染用户近期指令，供 gamer agent 在决策时参考。
+            if (!memory.userMessages.isEmpty()) {
+                sb.append("<user_instructions>\n");
+                int idx = 1;
+                for (UserMessageRecord record : memory.userMessages) {
+                    sb.append(idx++).append(". [").append(record.timestamp()).append("] ")
+                            .append(record.message()).append("\n");
+                }
+                sb.append("</user_instructions>\n\n");
+            }
 
             // run 摘要保存跨阶段仍有意义的长期倾向。
             appendSection(sb, "run_summary", memory.runSummary);
@@ -438,6 +470,7 @@ public class GamerWorkingMemoryService {
         private final String gameName;
         private String memoryKey = "";
         private final Deque<GamerDecisionRecord> recentDecisions = new ArrayDeque<>();
+        private final List<UserMessageRecord> userMessages = new ArrayList<>();
         private String runSummary = "";
         private String stageSummary = "";
         private String lastStageKey = "";
@@ -448,5 +481,11 @@ public class GamerWorkingMemoryService {
         private SessionMemory(String gameName) {
             this.gameName = gameName;
         }
+    }
+
+    /**
+     * 用户发送给 gamer 的指令记录。
+     */
+    private record UserMessageRecord(Instant timestamp, String message) {
     }
 }

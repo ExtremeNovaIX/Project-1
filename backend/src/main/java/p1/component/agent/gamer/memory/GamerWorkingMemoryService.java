@@ -320,9 +320,11 @@ public class GamerWorkingMemoryService {
             // 每条记录保持“决策说明 -> 操作 -> 结果”的固定顺序，便于压缩器提取因果。
             sb.append(index++).append(". status=").append(record.status())
                     .append(" | time=").append(record.timestamp())
-                    .append("\n   决策说明：").append(blankText(record.summary()))
-                    .append("\n   模型推理：").append(blankText(record.reasoning()))
-                    .append("\n   操作：").append(record.operations().isEmpty() ? "无" : String.join("; ", record.operations()))
+                    .append("\n   决策说明：").append(blankText(record.summary()));
+            if (record.reasoning() != null && !record.reasoning().isBlank()) {
+                sb.append("\n   模型推理：").append(record.reasoning());
+            }
+            sb.append("\n   操作：").append(record.operations().isEmpty() ? "无" : String.join("; ", record.operations()))
                     .append("\n   执行结果：").append(blankText(record.result()));
             if (record.interruptReason() != null && !record.interruptReason().isBlank()) {
                 sb.append("\n   中断原因：").append(record.interruptReason());

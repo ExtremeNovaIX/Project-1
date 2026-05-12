@@ -133,10 +133,12 @@ public class GameOperationQueueProcessor {
         String reasoningContent = consumeReasoningContent(key);
         List<GameOperation> operations = List.of();
         GameStateSnapshot plannedState = planningStates.get(key);
+        boolean expectMoreOperations = false;
         try {
             // 解析虚拟工具参数，后续所有执行都基于这个批次的 operations。
             JsonNode root = objectMapper.readTree(rawArguments == null || rawArguments.isBlank() ? "{}" : rawArguments);
             requestedStatus = GameBridgeActionStatus.from(root.path("status").asText("CONTINUE"));
+            expectMoreOperations = root.path("_expect_more_operations").asBoolean(false);
             operations = parseOperations(root.path("operations"));
             summary = normalizeSummary(root, requestedStatus, operations);
             if (operations.isEmpty()) {
@@ -163,7 +165,7 @@ public class GameOperationQueueProcessor {
             }
 
             // drainQueue 内部仍然逐条调用 MCP；单条业务失败可被 adapter 按最新状态软化并继续。
-            DrainResult drainResult = drainQueue(key, adapter, context, queue, plannedState);
+            DrainResult drainResult = drainQueue(key, adapter, context, queue, plannedState, expectMoreOperations);
             planningStates.put(key, drainResult.latestState());
             lastStatuses.put(key, requestedStatus);
             if (!drainResult.softFailures().isEmpty()) {
@@ -313,8 +315,8 @@ public class GameOperationQueueProcessor {
                                     String result,
                                     String interruptReason) {
         try {
-            // 工作记忆是辅助上下文，失败时只记录日志，不改变桥接层返回给 agent 的结果。
-            workingMemoryService.recordQueueResult(gameName, key, status, summary, reasoning, operations, result, interruptReason);
+            // 工作记忆只保留决策结论和执行反馈；完整 reasoning 只进入复盘日志，避免下轮 prompt 膨胀。
+            workingMemoryService.recordQueueResult(gameName, key, status, summary, "", operations, result, interruptReason);
         } catch (Exception e) {
             log.warn("[游戏桥接] gamer 工作记忆记录失败: game={}, memoryId={}, reason={}", gameName, key, e.getMessage());
         }
@@ -358,6 +360,7 @@ public class GameOperationQueueProcessor {
      * @param context      适配器运行上下文
      * @param queue        待执行操作队列
      * @param initialState agent 规划时的初始状态
+     * @param expectMoreOperations true 表示当前批次结束后同一 stream 仍可能继续输出后续操作
      * @return 队列执行结果，包含最新状态、成功数和软错误列表
      * @throws GameBridgeException 修复失败、工具不存在、执行异常或监视中断时抛出
      */
@@ -365,7 +368,8 @@ public class GameOperationQueueProcessor {
                                    GameAdapter adapter,
                                    GameAdapterContext context,
                                    ArrayDeque<QueuedGameOperation> queue,
-                                   GameStateSnapshot initialState) {
+                                   GameStateSnapshot initialState,
+                                   boolean expectMoreOperations) {
         int attempted = 0;
         int successful = 0;
         List<SoftOperationFailure> softFailures = new ArrayList<>();
@@ -415,7 +419,9 @@ public class GameOperationQueueProcessor {
             }
 
             GameStateSnapshot afterState = fetchStateUntilMonitorPasses(
-                    key, adapter, context, executedOperation, beforeState, toolResult, !queue.isEmpty(), successful + 1);
+                    key, adapter, context, executedOperation, beforeState, toolResult,
+                    !queue.isEmpty() || expectMoreOperations,
+                    successful + 1);
             currentState = afterState;
             successful++;
         }

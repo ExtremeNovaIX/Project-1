@@ -36,7 +36,7 @@ public class STS2Adapter implements GameAdapter {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Map<String, String> detectedMode = new ConcurrentHashMap<>();
     private volatile String lastFetchedGameName;
-    private final StateRenderer stateRenderer = new StateRenderer();
+    private final StateDiffRenderer stateDiffRenderer = new StateDiffRenderer();
     private final OperationToolRenderer operationToolRenderer = new OperationToolRenderer();
     private final PlayCardPlanCompiler playCardPlanCompiler = new PlayCardPlanCompiler();
 
@@ -150,10 +150,9 @@ public class STS2Adapter implements GameAdapter {
     }
 
     /**
-     * 将 STS2 状态渲染成面向 agent 的 JSON。
+     * 将 STS2 MCP 返回的源状态直接注入给 agent。
      * <p>
-     * 状态字段默认原样保留，避免新界面（如 card_select）因为手写渲染白名单而丢字段。
-     * 唯一特殊处理是把 player.hand 从数组改成按牌名聚合的对象，避免 agent 根据数组顺序推算手牌下标。
+     * 状态不再做 K-V 扁平化或字段清洗，避免界面特有字段、嵌套说明和 MCP 原生结构在渲染层丢失。
      */
     @Override
     public String renderStateForAgent(GameStateSnapshot state) {
@@ -161,7 +160,8 @@ public class STS2Adapter implements GameAdapter {
             return "(未能获取 STS2 状态)";
         }
 
-        return stateRenderer.render(state);
+        String raw = state.rawJson();
+        return raw == null || raw.isBlank() ? state.json().toString() : raw;
     }
 
     /**
@@ -169,7 +169,7 @@ public class STS2Adapter implements GameAdapter {
      */
     @Override
     public String renderStateDiffForAgent(GameStateSnapshot before, GameStateSnapshot after) {
-        return stateRenderer.renderDiff(before, after);
+        return stateDiffRenderer.renderDiff(before, after);
     }
 
     /**
@@ -347,28 +347,11 @@ public class STS2Adapter implements GameAdapter {
     }
 
     /**
-     * STS2 状态渲染器。
+     * STS2 状态差异渲染器。
      * <p>
-     * 该内部类把 MCP 原始 JSON 拍扁成稳定、短小的 K-V/列表结构。状态原始 JSON 仍保留在
-     * GameStateSnapshot 中供 repair 和 monitor 使用；这里的文本只面向 agent 决策。
+     * latest_game_state 已经直接注入 MCP 源 JSON；diff 仍保持短摘要，避免上一轮结果把 prompt 撑大。
      */
-    private class StateRenderer {
-
-        /**
-         * 渲染给 agent 的扁平状态文本。
-         */
-        private String render(GameStateSnapshot state) {
-            JsonNode root = state.json();
-            StringBuilder sb = new StringBuilder();
-            appendLine(sb, "state.type", firstNonBlank(text(root.path("state_type")), state.stateType()));
-            appendRun(sb, root.path("run"));
-            appendBattle(sb, root.path("battle"));
-            appendPlayer(sb, root.path("player"));
-            appendMap(sb, root.path("map"));
-            appendKnownTopLevel(sb, root);
-            appendUnknownTopLevel(sb, root);
-            return sb.toString().trim();
-        }
+    private class StateDiffRenderer {
 
         /**
          * 渲染操作前后状态白名单 diff，避免大段描述文本污染下一轮决策。
@@ -401,227 +384,6 @@ public class STS2Adapter implements GameAdapter {
         }
 
         /**
-         * 渲染 run 进度。
-         */
-        private void appendRun(StringBuilder sb, JsonNode run) {
-            if (!run.isObject()) {
-                return;
-            }
-            appendLine(sb, "run.act", text(run.path("act")));
-            appendLine(sb, "run.floor", text(run.path("floor")));
-            appendLine(sb, "run.ascension", text(run.path("ascension")));
-        }
-
-        /**
-         * 渲染战斗信息和敌人列表。
-         */
-        private void appendBattle(StringBuilder sb, JsonNode battle) {
-            if (!battle.isObject() || battle.isEmpty()) {
-                return;
-            }
-            appendLine(sb, "battle.round", text(battle.path("round")));
-            appendLine(sb, "battle.turn", text(battle.path("turn")));
-            appendLine(sb, "battle.is_play_phase", text(battle.path("is_play_phase")));
-            appendObjectList(sb, "enemies", battle.path("enemies"), false);
-        }
-
-        /**
-         * 渲染玩家、手牌、牌堆、遗物和药水。
-         */
-        private void appendPlayer(StringBuilder sb, JsonNode player) {
-            if (!player.isObject()) {
-                return;
-            }
-            appendLine(sb, "player.character", text(player.path("character")));
-            appendLine(sb, "player.hp", hp(player));
-            appendLine(sb, "player.block", text(player.path("block")));
-            appendLine(sb, "player.energy", energy(player));
-            appendLine(sb, "player.gold", text(player.path("gold")));
-            appendObjectList(sb, "player.status", player.path("status"), false);
-            appendObjectList(sb, "hand", player.path("hand"), false);
-            appendLine(sb, "draw_pile.count", text(player.path("draw_pile_count")));
-            appendObjectList(sb, "draw_pile", player.path("draw_pile"), false);
-            appendLine(sb, "discard_pile.count", text(player.path("discard_pile_count")));
-            appendObjectList(sb, "discard_pile", player.path("discard_pile"), false);
-            appendLine(sb, "exhaust_pile.count", text(player.path("exhaust_pile_count")));
-            appendObjectList(sb, "exhaust_pile", player.path("exhaust_pile"), false);
-            appendObjectList(sb, "relics", player.path("relics"), false);
-            appendLine(sb, "potions.max_slots", text(player.path("max_potion_slots")));
-            appendObjectList(sb, "potions", player.path("potions"), false);
-        }
-
-        /**
-         * 渲染完整地图，但用一行一个节点压缩表示。
-         */
-        private void appendMap(StringBuilder sb, JsonNode map) {
-            if (!map.isObject() || map.isEmpty()) {
-                return;
-            }
-            appendLine(sb, "map.current", mapCurrent(map));
-            appendMapOptions(sb, map.path("next_options"));
-            JsonNode nodes = map.path("nodes");
-            if (nodes.isArray() && !nodes.isEmpty()) {
-                sb.append("map.nodes:\n");
-                for (JsonNode node : nodes) {
-                    sb.append("- ").append(renderMapNode(node)).append("\n");
-                }
-            }
-            appendLine(sb, "map.boss", renderMapNode(map.path("boss")));
-        }
-
-        /**
-         * 渲染常见非战斗界面。
-         */
-        private void appendKnownTopLevel(StringBuilder sb, JsonNode root) {
-            List<String> keys = List.of(
-                    "rewards",
-                    "card_reward",
-                    "card_select",
-                    "event",
-                    "shop",
-                    "rest_site",
-                    "campfire",
-                    "chest",
-                    "treasure"
-            );
-            for (String key : keys) {
-                JsonNode node = root.path(key);
-                if (!node.isMissingNode() && !node.isNull() && !node.isEmpty()) {
-                    appendGenericNode(sb, key, node, 0);
-                }
-            }
-        }
-
-        /**
-         * 渲染未显式处理的顶层字段，避免新界面因为白名单而完全丢信息。
-         */
-        private void appendUnknownTopLevel(StringBuilder sb, JsonNode root) {
-            Set<String> handled = Set.of(
-                    "state_type",
-                    "run",
-                    "battle",
-                    "player",
-                    "map",
-                    "rewards",
-                    "card_reward",
-                    "card_select",
-                    "event",
-                    "shop",
-                    "rest_site",
-                    "campfire",
-                    "chest",
-                    "treasure"
-            );
-            Iterator<Map.Entry<String, JsonNode>> fields = root.fields();
-            while (fields.hasNext()) {
-                Map.Entry<String, JsonNode> field = fields.next();
-                if (!handled.contains(field.getKey()) && !field.getValue().isNull() && !field.getValue().isEmpty()) {
-                    appendGenericNode(sb, field.getKey(), field.getValue(), 0);
-                }
-            }
-        }
-
-        /**
-         * 渲染通用对象或数组，最多浅展开两层嵌套结构。
-         */
-        private void appendGenericNode(StringBuilder sb, String prefix, JsonNode node, int depth) {
-            if (isScalar(node)) {
-                appendLine(sb, prefix, scalar(node));
-                return;
-            }
-            if (node.isArray()) {
-                appendObjectList(sb, prefix, node, shouldShowOptionIndex(prefix));
-                return;
-            }
-            if (!node.isObject()) {
-                return;
-            }
-            Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
-            while (fields.hasNext()) {
-                Map.Entry<String, JsonNode> field = fields.next();
-                JsonNode child = field.getValue();
-                String childPrefix = prefix + "." + field.getKey();
-                if (isScalar(child)) {
-                    appendLine(sb, childPrefix, scalar(child));
-                } else if (depth < 2 && !child.isEmpty()) {
-                    appendGenericNode(sb, childPrefix, child, depth + 1);
-                } else if (!child.isEmpty()) {
-                    appendLine(sb, childPrefix, compact(child));
-                }
-            }
-        }
-
-        /**
-         * 渲染对象数组；手牌和牌堆不显示索引，选择类列表会显示底层工具所需的 option。
-         */
-        private void appendObjectList(StringBuilder sb, String label, JsonNode array, boolean showOptionIndex) {
-            if (!array.isArray() || array.isEmpty()) {
-                return;
-            }
-            sb.append(label).append(":\n");
-            for (int i = 0; i < array.size(); i++) {
-                JsonNode item = array.get(i);
-                sb.append("- ");
-                if (showOptionIndex) {
-                    sb.append(optionName(label)).append("=").append(i).append(" ");
-                }
-                if (item.isObject()) {
-                    sb.append(inlineScalars(item, label)).append("\n");
-                    appendNestedObjects(sb, item, "  ", 1);
-                } else {
-                    sb.append(scalar(item)).append("\n");
-                }
-            }
-        }
-
-        /**
-         * 渲染一层到两层嵌套对象，保留诅咒、词条、意图等额外说明。
-         */
-        private void appendNestedObjects(StringBuilder sb, JsonNode object, String indent, int depth) {
-            if (depth > 2 || !object.isObject()) {
-                return;
-            }
-            Iterator<Map.Entry<String, JsonNode>> fields = object.fields();
-            while (fields.hasNext()) {
-                Map.Entry<String, JsonNode> field = fields.next();
-                JsonNode child = field.getValue();
-                if (isScalar(child) || child.isEmpty()) {
-                    continue;
-                }
-                sb.append(indent).append(field.getKey()).append(":\n");
-                if (child.isArray()) {
-                    for (JsonNode item : child) {
-                        sb.append(indent).append("- ");
-                        if (item.isObject()) {
-                            sb.append(inlineScalars(item)).append("\n");
-                            appendNestedObjects(sb, item, indent + "  ", depth + 1);
-                        } else {
-                            sb.append(scalar(item)).append("\n");
-                        }
-                    }
-                } else if (child.isObject()) {
-                    sb.append(indent).append("- ").append(inlineScalars(child)).append("\n");
-                    appendNestedObjects(sb, child, indent + "  ", depth + 1);
-                } else {
-                    sb.append(indent).append("- ").append(compact(child)).append("\n");
-                }
-            }
-        }
-
-        /**
-         * 渲染地图下一节点选项。
-         */
-        private void appendMapOptions(StringBuilder sb, JsonNode options) {
-            if (!options.isArray() || options.isEmpty()) {
-                return;
-            }
-            sb.append("map.next_options:\n");
-            for (int i = 0; i < options.size(); i++) {
-                sb.append("- node_index=").append(i).append(" ").append(renderMapNode(options.get(i))).append("\n");
-            }
-        }
-
-        /**
          * 渲染地图节点。
          */
         private String renderMapNode(JsonNode node) {
@@ -643,77 +405,16 @@ public class STS2Adapter implements GameAdapter {
          * 将对象中的标量字段渲染成单行。
          */
         private String inlineScalars(JsonNode object) {
-            return inlineScalars(object, "");
-        }
-
-        /**
-         * 将对象中的标量字段渲染成单行，并按列表类型隐藏容易诱导错误决策的底层字段。
-         */
-        private String inlineScalars(JsonNode object, String label) {
             List<String> parts = new ArrayList<>();
             Iterator<Map.Entry<String, JsonNode>> fields = object.fields();
             while (fields.hasNext()) {
                 Map.Entry<String, JsonNode> field = fields.next();
                 JsonNode value = field.getValue();
-                if (isScalar(value) && shouldRenderScalar(value) && shouldRenderScalarField(label, field.getKey())) {
+                if (isScalar(value) && shouldRenderScalar(value)) {
                     parts.add(field.getKey() + "=" + scalar(value));
                 }
             }
             return parts.isEmpty() ? compact(object) : String.join(" ", parts);
-        }
-
-        /**
-         * 判断某个标量字段是否应该渲染给 agent。
-         */
-        private boolean shouldRenderScalarField(String label, String fieldName) {
-            if (fieldName == null) {
-                return true;
-            }
-            String lowerLabel = label == null ? "" : label.toLowerCase();
-            String lowerField = fieldName.toLowerCase();
-            if (("hand".equals(lowerLabel)
-                    || lowerLabel.endsWith("_pile")
-                    || lowerLabel.endsWith(".hand"))
-                    && ("index".equals(lowerField)
-                    || "card_index".equals(lowerField)
-                    || "cardindex".equals(lowerField))) {
-                return false;
-            }
-            return true;
-        }
-
-        /**
-         * 判断某个通用列表是否应显示底层工具索引。
-         */
-        private boolean shouldShowOptionIndex(String prefix) {
-            String lower = prefix.toLowerCase();
-            return lower.contains("reward")
-                    || lower.contains("option")
-                    || lower.endsWith("cards") && lower.contains("card_select");
-        }
-
-        /**
-         * 根据列表类型选择索引字段名。
-         */
-        private String optionName(String label) {
-            String lower = label.toLowerCase();
-            if (lower.contains("card")) {
-                return "card_index";
-            }
-            if (lower.contains("reward")) {
-                return "reward_index";
-            }
-            return "option";
-        }
-
-        /**
-         * 追加一行 K-V，空值不输出。
-         */
-        private void appendLine(StringBuilder sb, String key, String value) {
-            if (value == null || value.isBlank()) {
-                return;
-            }
-            sb.append(key).append("=").append(value).append("\n");
         }
 
         /**

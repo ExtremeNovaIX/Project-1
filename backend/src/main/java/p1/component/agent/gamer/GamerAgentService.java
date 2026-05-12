@@ -12,6 +12,7 @@ import p1.component.agent.gamer.bridge.GameBridgeActionStatus;
 import p1.component.agent.gamer.bridge.GameBridgeService;
 import p1.component.agent.gamer.bridge.GameOperationQueueProcessor;
 import p1.component.agent.gamer.memory.TurnScopedGamerChatMemory;
+import p1.config.mcp.GamerProperties;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,6 +30,8 @@ public class GamerAgentService {
     private final GamerMCPClientFactory mcpClientFactory;
     private final GameBridgeService bridgeService;
     private final ChatModel chatModel;
+    private final GamerStreamingAgentService streamingAgentService;
+    private final GamerProperties gamerProperties;
 
     /**
      * 创建游戏智能体服务。
@@ -39,10 +42,14 @@ public class GamerAgentService {
      */
     public GamerAgentService(GamerMCPClientFactory mcpClientFactory,
                              GameBridgeService bridgeService,
-                             @Qualifier("gamerChatModel") ChatModel chatModel) {
+                             @Qualifier("gamerChatModel") ChatModel chatModel,
+                             GamerStreamingAgentService streamingAgentService,
+                             GamerProperties gamerProperties) {
         this.mcpClientFactory = mcpClientFactory;
         this.bridgeService = bridgeService;
         this.chatModel = chatModel;
+        this.streamingAgentService = streamingAgentService;
+        this.gamerProperties = gamerProperties;
     }
 
     /**
@@ -107,19 +114,36 @@ public class GamerAgentService {
             MDC.put("sessionId", memoryId);
             MDC.put("serviceInfo", "gamer");
 
-            // 每次调用前重新构建上下文，保证状态和可用工具都是最新的。
-            GamerAgent agent = buildAgent(gameName, sessionId);
-            String displayName = mcpClientFactory.getGameDisplayName(gameName);
-            String gameGuidelines = mcpClientFactory.getGameGuidelines(gameName);
-            String context = bridgeService.buildAgentContext(gameName, sessionId, userMessage);
-            Result<String> result = agent.play(memoryId, context, displayName, gameGuidelines);
-            return result == null || result.content() == null ? "" : result.content();
+            if (gamerProperties.getStreaming().isEnabled()) {
+                return streamingAgentService.play(gameName, sessionId, userMessage);
+            }
+
+            return playWithToolCalling(gameName, sessionId, userMessage, memoryId);
         } finally {
             // 同一游戏会话必须串行执行，避免用户指令和定时循环同时操作 MCP。
             restoreMdc("sessionId", previousSessionId);
             restoreMdc("serviceInfo", previousServiceInfo);
             lock.unlock();
         }
+    }
+
+    /**
+     * 使用原 LangChain4j tool calling 路径处理 gamer 决策。
+     *
+     * @param gameName    游戏名
+     * @param sessionId   用户侧会话 id
+     * @param userMessage 外层传入的用户指令
+     * @param memoryId    gamer 统一会话 key
+     * @return 模型或工具返回文本
+     */
+    private String playWithToolCalling(String gameName, String sessionId, String userMessage, String memoryId) {
+        // 每次调用前重新构建上下文，保证状态和可用工具都是最新的。
+        GamerAgent agent = buildAgent(gameName, sessionId);
+        String displayName = mcpClientFactory.getGameDisplayName(gameName);
+        String gameGuidelines = mcpClientFactory.getGameGuidelines(gameName);
+        String context = bridgeService.buildAgentContext(gameName, sessionId, userMessage);
+        Result<String> result = agent.play(memoryId, context, displayName, gameGuidelines);
+        return result == null || result.content() == null ? "" : result.content();
     }
 
     /**

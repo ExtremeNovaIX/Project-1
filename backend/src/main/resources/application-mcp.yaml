@@ -13,6 +13,17 @@ gamer:
   game-loop:
     poll-interval-ms: 500
     max-immediate-replans: 5
+  streaming:
+    enabled: true
+    max-actions-per-stream: 12
+    max-stream-wait-ms: 30000
+    first-action-timeout-ms: 12000
+    max-json-candidate-chars: 12000
+    reasoning-trace-max-chars: 4000
+    parse-thinking-chunks: false
+    parse-response-chunks: true
+    log-stream-summary: true
+    log-summary-max-chars: 6000
   memory:
     recent-decision-limit: 20
     stage-compress-decision-interval: 16

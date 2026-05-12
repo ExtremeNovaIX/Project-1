@@ -2,6 +2,7 @@ package p1.config;
 
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.service.AiServices;
 import lombok.AllArgsConstructor;
@@ -70,8 +71,53 @@ public class AiConfig {
 
     @Bean(name = "gamerChatModel")
     public ChatModel gamerChatModel() {
-        AssistantProperties.ChatModelConfig config = props.activeChatModel();
+        AssistantProperties.ChatModelConfig config = gamerChatModelConfig();
         return chatModelFactory.buildChatModel(config, aiServiceLoggingListener, 0.3);
+    }
+
+    @Bean(name = "gamerStreamingChatModel")
+    public StreamingChatModel gamerStreamingChatModel() {
+        AssistantProperties.ChatModelConfig config = gamerChatModelConfig();
+        return chatModelFactory.buildStreamingChatModel(config, aiServiceLoggingListener, 0.3);
+    }
+
+    /**
+     * 构建 gamer 专用模型配置。
+     * <p>
+     * gamer 决策要求低延迟，且操作 JSON 会从普通 response 流中解析，
+     * 因此这里关闭 reasoning_content / thinking，避免模型把大量推理写入隐藏通道。
+     *
+     * @return 禁用 thinking 的 gamer 模型配置副本
+     */
+    private AssistantProperties.ChatModelConfig gamerChatModelConfig() {
+        AssistantProperties.ChatModelConfig source = props.activeChatModel();
+        AssistantProperties.ChatModelConfig copy = copyChatModelConfig(source);
+        copy.setReturnThinking(false);
+        copy.setSendThinking(false);
+        copy.setReasoningEffort(null);
+        copy.setThinkingType("disabled");
+        return copy;
+    }
+
+    /**
+     * 复制聊天模型配置，避免修改全局 activeChatModel 影响 RP 或后台任务。
+     *
+     * @param source 当前激活的全局模型配置
+     * @return 可安全修改的配置副本
+     */
+    private AssistantProperties.ChatModelConfig copyChatModelConfig(AssistantProperties.ChatModelConfig source) {
+        AssistantProperties.ChatModelConfig copy = new AssistantProperties.ChatModelConfig();
+        copy.setApiKey(source.getApiKey());
+        copy.setBaseUrl(source.getBaseUrl());
+        copy.setModelName(source.getModelName());
+        copy.setTimeoutSeconds(source.getTimeoutSeconds());
+        copy.setLogEnabled(source.isLogEnabled());
+        copy.setPrompt(source.getPrompt());
+        copy.setReturnThinking(source.isReturnThinking());
+        copy.setSendThinking(source.isSendThinking());
+        copy.setReasoningEffort(source.getReasoningEffort());
+        copy.setThinkingType(source.getThinkingType());
+        return copy;
     }
 
     @Bean

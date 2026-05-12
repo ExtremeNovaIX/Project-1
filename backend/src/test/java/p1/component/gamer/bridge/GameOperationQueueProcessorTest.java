@@ -16,6 +16,8 @@ import p1.component.agent.reasoning.ReasoningContentRecorder;
 import p1.config.mcp.GamerMemoryProperties;
 import p1.config.mcp.MCPProperties;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -172,6 +174,45 @@ class GameOperationQueueProcessorTest {
         );
 
         assertTrue(processor.peekLastActionResult(memoryId).contains("decision=兼容旧字段并继续执行"));
+    }
+
+    @Test
+    void shouldTreatStreamingActionAsHavingRemainingOperations() throws Exception {
+        GameOperationQueueProcessor processor = new GameOperationQueueProcessor(testWorkingMemoryService());
+        GameStateSnapshot playState = state("{\"state_type\":\"monster\",\"battle\":{\"turn\":\"player\",\"is_play_phase\":true}}");
+        AtomicBoolean hasRemainingSeen = new AtomicBoolean(false);
+        GameAdapter adapter = new SoftAwareAdapter(playState) {
+            @Override
+            public void monitorAfterExecute(QueuedGameOperation operation,
+                                            GameStateSnapshot beforeState,
+                                            GameStateSnapshot afterState,
+                                            String toolResult,
+                                            boolean hasRemainingOperations) {
+                hasRemainingSeen.set(hasRemainingOperations);
+            }
+        };
+        String memoryId = "streaming-remaining-test";
+        processor.rememberPlanningState(memoryId, playState);
+
+        processor.enqueueAndDrain(
+                "test-game",
+                memoryId,
+                adapter,
+                config(),
+                tools(),
+                """
+                        {
+                          "_expect_more_operations": true,
+                          "status":"CONTINUE",
+                          "summary":"测试流式后续操作标记",
+                          "operations":[
+                            {"tool":"good_tool","args":{},"note":"成功操作"}
+                          ]
+                        }
+                        """
+        );
+
+        assertTrue(hasRemainingSeen.get());
     }
 
     private GamerWorkingMemoryService testWorkingMemoryService() {

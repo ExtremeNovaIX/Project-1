@@ -126,7 +126,7 @@ class STS2AdapterTest {
     }
 
     @Test
-    void shouldRenderFlattenedStateWithoutHandIndex() throws Exception {
+    void shouldRenderRawSourceStateForAgent() throws Exception {
         GameStateSnapshot state = state("""
                 {
                   "state_type":"card_select",
@@ -151,18 +151,13 @@ class STS2AdapterTest {
 
         String rendered = adapter.renderStateForAgent(state);
 
-        assertTrue(rendered.contains("state.type=card_select"));
-        assertTrue(rendered.contains("card_select.type=discard"));
-        assertTrue(rendered.contains("hand:"));
-        assertTrue(rendered.contains("- name=打击 cost=1 description=造成6点伤害。"));
-        assertTrue(rendered.contains("- name=防御 cost=1 description=获得5点格挡。"));
-        assertTrue(rendered.contains("- name=贪婪 cost=0 description=不能被打出。永恒。"));
-        assertFalse(rendered.contains("- index=0 name=打击"));
-        assertTrue(rendered.contains("keywords:"));
-        assertTrue(rendered.contains("- name=永恒 description=无法从你的牌组中移除或变化。"));
-        assertFalse(rendered.contains("cards_by_name"));
-        assertTrue(rendered.contains("card_select.cards:"));
-        assertTrue(rendered.contains("- card_index=0 name=打击"));
+        assertEquals(state.json(), objectMapper.readTree(rendered));
+        assertEquals(0, objectMapper.readTree(rendered).path("player").path("hand").path(0).path("index").asInt());
+        assertEquals("永恒", objectMapper.readTree(rendered)
+                .path("player").path("hand").path(3).path("keywords").path(0).path("name").asText());
+        assertTrue(rendered.contains("\"card_select\""));
+        assertFalse(rendered.contains("state.type=card_select"));
+        assertFalse(rendered.contains("card_select.cards:"));
     }
 
     @Test

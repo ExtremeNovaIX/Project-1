@@ -11,6 +11,7 @@ import p1.component.agent.gamer.GameSessionKey;
 import p1.component.agent.gamer.GamerMCPClientFactory;
 import p1.component.agent.gamer.adapter.*;
 import p1.component.agent.gamer.memory.GamerWorkingMemoryService;
+import p1.config.mcp.GamerProperties;
 import p1.config.mcp.MCPProperties;
 
 /**
@@ -28,6 +29,7 @@ public class GameBridgeService {
     private final GameAdapterRegistry adapterRegistry;
     private final GameOperationQueueProcessor queueProcessor;
     private final GamerWorkingMemoryService workingMemoryService;
+    private final GamerProperties gamerProperties;
 
     /**
      * 构建暴露给 gamer agent 的桥接工具集合。
@@ -73,6 +75,7 @@ public class GameBridgeService {
         StringBuilder sb = new StringBuilder();
         sb.append("<bridge_rules>\n")
                 .append("- 系统已经注入最新游戏状态，不要调用任何状态查询工具。\n")
+                .append("- latest_game_state 是游戏 MCP 返回的源 JSON；优先直接读取其中的原生字段。\n")
                 .append("- 游戏操作必须通过 `").append(GameBridgeToolProvider.ENQUEUE_TOOL_NAME).append("` 一次提交一个候选操作队列。\n")
                 .append("- operations 中的每一项使用下方列出的 MCP 工具名和参数；桥接层会逐条执行。\n")
                 .append("- MCP 业务失败后，如果最新状态仍可行动，桥接层会记录错误、跳过失败操作并继续剩余队列。\n")
@@ -81,6 +84,17 @@ public class GameBridgeService {
                 .append("- 抽牌、弃牌、随机、领取奖励、打开选择界面等会改变行动窗口的操作应放在队列末尾。\n")
                 .append("- gamer_memory 只是历史决策摘要，不能覆盖 latest_game_state 中的当前事实。\n")
                 .append("</bridge_rules>\n\n");
+        if (gamerProperties.getStreaming().isEnabled()) {
+            sb.append("<streaming_output_rules>\n")
+                    .append("- 当前启用流式 response JSON ACTION 模式；系统会从普通 response 流解析 JSON。\n")
+                    .append("- 不要依赖 thinking/reasoning_content；第一段尽量直接输出 JSON 对象。\n")
+                    .append("- 每个 JSON 对象必须包含 operations；同一稳定行动窗口内尽量一次提交完整确定队列。\n")
+                    .append("- 抽牌、弃牌、随机生成、打开选择界面、确认选择、领取奖励等会改变状态的操作必须放在当前 JSON 的最后。\n")
+                    .append("- JSON 输出后可以继续输出下一个 JSON；不要使用 Markdown 代码块。\n")
+                    .append("- 示例只展示格式，实际 tool/args 必须来自 available_operations/latest_game_state：\n")
+                    .append("{\"type\":\"action\",\"status\":\"CONTINUE\",\"summary\":\"先执行确定收益操作\",\"operations\":[{\"tool\":\"combat_play_card\",\"args\":{\"card\":\"痛击\",\"target\":\"ENEMY_0\"},\"note\":\"先上易伤\"}]}\n")
+                    .append("</streaming_output_rules>\n\n");
+        }
         if (notice != null && !notice.isBlank()) {
             sb.append("<bridge_notice>\n").append(notice).append("\n</bridge_notice>\n\n");
         }
@@ -102,6 +116,26 @@ public class GameBridgeService {
                 .append(userMessage == null ? "" : userMessage)
                 .append("\n</user_instruction>");
         return sb.toString();
+    }
+
+    /**
+     * 执行流式解析得到的操作队列。
+     * <p>
+     * 流式路径不经过 LangChain4j tool calling，但仍复用同一个队列处理器，
+     * 因此修复、软错误、状态监视和中断逻辑保持一致。
+     *
+     * @param gameName     游戏名
+     * @param sessionId    用户侧会话 id
+     * @param rawArguments enqueue_operations 兼容 JSON 参数
+     * @return 队列处理器返回的执行结果文本
+     */
+    public String executeOperationQueue(String gameName, String sessionId, String rawArguments) {
+        String memoryId = GameSessionKey.of(gameName, sessionId);
+        MCPProperties.GameMCPConfig config = requireConfig(gameName);
+        GameAdapter adapter = adapterRegistry.getAdapter(gameName, config);
+        ToolProvider rawProvider = mcpClientFactory.getToolProvider(gameName);
+        ToolProviderResult tools = rawProvider.provideTools(new ToolProviderRequest(memoryId, UserMessage.from("streaming operation dispatch")));
+        return queueProcessor.enqueueAndDrain(gameName, memoryId, adapter, config, tools, rawArguments);
     }
 
     /**

@@ -47,6 +47,22 @@ public class AssistantProperties {
         private Long timeoutSeconds;
         private boolean logEnabled;
         private String prompt;
+        /**
+         * 是否接收模型返回的 reasoning_content / thinking 字段。
+         */
+        private boolean returnThinking = true;
+        /**
+         * 是否把历史 thinking 再发送给模型；默认关闭，避免长推理回灌拖慢请求。
+         */
+        private boolean sendThinking = false;
+        /**
+         * 支持 reasoning_effort 的模型可用 low/medium/high 等值；为空时不发送该参数。
+         */
+        private String reasoningEffort;
+        /**
+         * 兼容部分供应商的 thinking.type 参数，例如 disabled/enabled；为空时不发送。
+         */
+        private String thinkingType;
     }
 
     @Data

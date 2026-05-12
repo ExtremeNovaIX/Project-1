@@ -109,8 +109,8 @@ public class GamerStreamingAgentService {
                 - 当前会从普通 response 流中解析 ACTION JSON；不要依赖 thinking/reasoning_content。
                 - 第一段尽量直接输出 JSON ACTION；必要说明写进 summary 和 note。
                 - 不要先总结全部手牌、全部敌人和全部候选路线。
-                - JSON 对象必须包含 operations；推荐包含 type/status/summary/message。
-                - message 字段为用户可见的1-2句自然语言回复，说明当前操作意图。系统从第一个 ACTION 提取并展示给用户。
+                - 在第一个 JSON ACTION 之前，必须先输出1-2句自然语言回复给用户（纯文本，不用 JSON），说明你当前在做什么。
+                - JSON 对象必须包含 operations；推荐包含 type/status/summary。
                 - 同一稳定行动窗口内，尽量一次提交完整确定队列。
                 - 抽牌、弃牌、随机生成、打开选择界面、确认选择、领取奖励等会改变状态的操作必须放在当前 JSON 的最后。
                 - JSON 输出后可以继续输出下一个 JSON；系统会从 response 流边解析边执行。
@@ -119,8 +119,8 @@ public class GamerStreamingAgentService {
                 </streaming_protocol>
 
                 <json_example>
-                先执行确定收益。
-                {"type":"action","status":"CONTINUE","message":"先用痛击上易伤，提高后续输出。","summary":"先执行确定收益操作","operations":[{"tool":"combat_play_card","args":{"card":"痛击","target":"ENEMY_0"},"note":"先上易伤"}]}
+                先用痛击上易伤，提高后续输出。
+                {"type":"action","status":"CONTINUE","summary":"先执行确定收益操作","operations":[{"tool":"combat_play_card","args":{"card":"痛击","target":"ENEMY_0"},"note":"先上易伤"}]}
                 </json_example>
 
                 <micro_decision_example>
@@ -287,9 +287,11 @@ public class GamerStreamingAgentService {
         private void dispatchAction(StreamingJsonInstruction instruction) {
             int currentAction = actionCount.incrementAndGet();
             if (currentAction == 1) {
-                String msg = instruction.json().path("message").asText(null);
-                if (msg != null && !msg.isBlank()) {
-                    firstMessage = msg.trim();
+                // 第一个 ACTION 之前的 response 文本就是给用户的自然语言回复。
+                String fullResponse = responseBuffer.toString();
+                int jsonStart = fullResponse.indexOf('{');
+                if (jsonStart > 0) {
+                    firstMessage = fullResponse.substring(0, jsonStart).trim();
                 }
             }
             recordReasoningSnapshot();

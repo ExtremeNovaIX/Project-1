@@ -45,7 +45,7 @@ public interface GamerAgent {
             </streaming_execution_protocol>
             
             <json_schema_rules>
-            - `message`：用户可见的自然语言回复（1-3句话），必须在提交操作前向用户简要说明当前计划。非必填但强烈推荐。
+            - 在输出 JSON 之前，先输出一段自然语言文本回复给用户，简要说明你当前在做什么。这必须是一段纯文本，不是 JSON。
             - `summary`：仅陈述决策依据和目标（如：过牌寻找输出）。
             - `operations[].note`：单步操作的直接目的。
             - 状态：`WAIT`（无法操作，operations为空），`CONTINUE`（提交队列）。
@@ -57,17 +57,20 @@ public interface GamerAgent {
             敌方意图攻击15，我2费。手牌有中和(0费虚弱)、防御(1费5甲)、生存者(1费叠8甲并需要弃牌)。
             <step 1>
             意图：先打0费中和上虚弱，减轻后续防守压力。
-            {"type":"action","status":"CONTINUE","message":"先用中和上虚弱减伤，再根据情况防守。","summary":"上虚弱减伤","operations":[{"tool":"combat_play_card","args":{"card":"中和","target":"ENEMY_0"}}]}
+            先用中和上虚弱减伤，再根据情况防守。
+            {"type":"action","status":"CONTINUE","summary":"上虚弱减伤","operations":[{"tool":"combat_play_card","args":{"card":"中和","target":"ENEMY_0"}}]}
             </step 1>
             推演更新：敌方被虚弱，攻击变为 15 * 0.75 = 11点。我还剩3费。接下来防守。
             <step 2>
             意图：我需要上防，但是弃牌类效果可以在手上没有其他牌时直接被规避掉，所以我选择先打出防御再打出生存者。
-            {"type":"action","status":"CONTINUE","message":"先打防御叠甲，再打生存者利用弃牌截断。","summary":"叠甲并触发弃牌截断","operations":[{"tool":"combat_play_card","args":{"card":"防御"}},{"tool":"combat_play_card","args":{"card":"生存者"}}]}
+            先打防御叠甲，再打生存者利用弃牌截断。
+            {"type":"action","status":"CONTINUE","summary":"叠甲并触发弃牌截断","operations":[{"tool":"combat_play_card","args":{"card":"防御"}},{"tool":"combat_play_card","args":{"card":"生存者"}}]}
             </step 2>
             推演更新：现在费用为2-1-1=0，手牌也用完了，我该结束回合了。
             <step 3>
             意图：结束回合。
-            {"type":"action","status":"CONTINUE","message":"没有进一步的操作可能，结束回合。","summary":"没有进一步的操作可能，结束回合。","operations":[{"tool":"combat_end_turn","args":{},"note":"无能量可用"}]}
+            没有进一步的操作可能，结束本回合。
+            {"type":"action","status":"CONTINUE","summary":"没有进一步的操作可能，结束回合。","operations":[{"tool":"combat_end_turn","args":{},"note":"无能量可用"}]}
             </step 3>
             </thinking>
             </example>
@@ -77,7 +80,8 @@ public interface GamerAgent {
             敌方15血，意图攻击15。我有3费，手牌有光子切割+(抽牌两张并打出8伤害)，但是没有防御牌。我得通过抽牌寻找机会斩杀或者防御牌，不然就要扩大战损。
             <step 1>
             原子意图：利用光子切割+过牌寻找更多机会。该操作包含抽牌和改变牌堆顶，属于不可预测状态变化，所以只输出此操作.
-            {"type":"action","status":"CONTINUE","message":"用光子切割+过牌寻找防御或斩杀机会。","summary":"打出过牌，准备截断等待新状态","operations":[{"tool":"combat_play_card","args":{"card":"光子切割+","target":"ENEMY_0"}}]}
+            用光子切割+过牌寻找防御或斩杀机会。
+            {"type":"action","status":"CONTINUE","summary":"打出过牌，准备截断等待新状态","operations":[{"tool":"combat_play_card","args":{"card":"光子切割+","target":"ENEMY_0"}}]}
             </step 1>
             </thinking>
             </example>

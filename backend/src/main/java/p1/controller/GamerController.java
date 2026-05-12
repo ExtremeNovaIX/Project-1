@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import p1.component.agent.gamer.GamerAgentService;
 import p1.component.agent.gamer.GamerPlayResult;
 import p1.component.agent.gamer.GamerRequestResolver;
+import p1.component.agent.gamer.memory.GamerWorkingMemoryService;
 import p1.component.agent.gamer.loop.ActiveGameSession;
 import p1.component.agent.gamer.loop.GamerGameLoopService;
 
@@ -35,6 +36,7 @@ public class GamerController {
     private final GamerAgentService gamerAgentService;
     private final GamerGameLoopService gameLoopService;
     private final GamerRequestResolver requestResolver;
+    private final GamerWorkingMemoryService workingMemoryService;
 
     @PostMapping("/play")
     public ResponseEntity<?> play(@RequestBody GamerPlayRequest request) {
@@ -49,6 +51,9 @@ public class GamerController {
         }
 
         log.info("[游戏控制器] 收到游戏指令: game={}, session={}, message={}", gameName, sessionId, message);
+
+        // 只有来自用户的真实交互消息才记入工作记忆，游戏循环的自动提示不记。
+        workingMemoryService.recordUserMessage(gameName, gameName + "-" + sessionId, message);
 
         GamerPlayResult playResult = gamerAgentService.play(gameName, sessionId, message);
 

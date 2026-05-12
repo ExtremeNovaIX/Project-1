@@ -468,27 +468,16 @@ const sendMessage = async () => {
       const gamerMessage = typeof (responsePayload as Record<string, unknown>)?.message === 'string'
         ? (responsePayload as Record<string, string>).message
         : '';
-      const gamerResult = typeof (responsePayload as Record<string, unknown>)?.result === 'string'
-        ? (responsePayload as Record<string, string>).result
-        : '';
 
       if (gamerMessage) {
         const assistantMsg = createAssistantMessage(gamerMessage);
         if (assistantMsg) {
           messages.value.push(assistantMsg);
         }
-      } else if (!gamerResult) {
-        const emptyMsg = createAssistantMessage('Gamer 未生成回复。');
+      } else {
+        const emptyMsg = createAssistantMessage('Gamer 未生成回复，请重试。');
         if (emptyMsg) {
           messages.value.push(emptyMsg);
-        }
-      }
-
-      // 如果执行结果与用户消息不同，作为附加详情显示
-      if (gamerResult && gamerResult !== gamerMessage) {
-        const resultMsg = createAssistantMessage(`[执行结果] ${gamerResult}`);
-        if (resultMsg) {
-          messages.value.push(resultMsg);
         }
       }
 

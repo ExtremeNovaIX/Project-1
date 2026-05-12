@@ -144,8 +144,8 @@ public class GamerAgentService {
         String context = bridgeService.buildAgentContext(gameName, sessionId, userMessage);
         Result<String> result = agent.play(memoryId, context, displayName, gameGuidelines);
         String resultContent = result == null || result.content() == null ? "" : result.content();
-        String message = bridgeService.lastUserMessage(gameName, sessionId);
-        return new GamerPlayResult(message, resultContent);
+        // tool-calling 路径无法捕获工具调用前的文本，message 留空。
+        return new GamerPlayResult("", resultContent);
     }
 
     /**

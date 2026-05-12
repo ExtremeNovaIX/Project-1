@@ -37,7 +37,6 @@ public class GameOperationQueueProcessor {
     private final Map<String, String> notices = new ConcurrentHashMap<>();
     private final Map<String, GameBridgeActionStatus> lastStatuses = new ConcurrentHashMap<>();
     private final Map<String, String> lastActionResults = new ConcurrentHashMap<>();
-    private final Map<String, String> lastMessages = new ConcurrentHashMap<>();
 
     private final GamerWorkingMemoryService workingMemoryService;
     private final GamerDecisionTraceService traceService;
@@ -88,7 +87,6 @@ public class GameOperationQueueProcessor {
      */
     public void clearLastStatus(String memoryId) {
         lastStatuses.remove(memoryId);
-        lastMessages.remove(memoryId);
     }
 
     /**
@@ -109,16 +107,6 @@ public class GameOperationQueueProcessor {
      */
     public String peekLastActionResult(String memoryId) {
         return lastActionResults.get(memoryId);
-    }
-
-    /**
-     * 查询最近一次 enqueue_operations 中模型生成的用户可见消息。
-     *
-     * @param memoryId LangChain4j 的会话记忆 id
-     * @return 用户可见消息；没有时返回空字符串
-     */
-    public String lastMessage(String memoryId) {
-        return lastMessages.getOrDefault(memoryId, "");
     }
 
     /**
@@ -152,10 +140,6 @@ public class GameOperationQueueProcessor {
             requestedStatus = GameBridgeActionStatus.from(root.path("status").asText("CONTINUE"));
             expectMoreOperations = root.path("_expect_more_operations").asBoolean(false);
             operations = parseOperations(root.path("operations"));
-            String userMessage = root.path("message").asText(null);
-            if (userMessage != null && !userMessage.isBlank()) {
-                lastMessages.put(key, normalizeText(userMessage));
-            }
             summary = normalizeSummary(root, requestedStatus, operations);
             if (operations.isEmpty()) {
                 String result = "未提交操作。" + summary;

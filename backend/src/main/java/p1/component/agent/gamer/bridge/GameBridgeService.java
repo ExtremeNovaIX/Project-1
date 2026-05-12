@@ -68,9 +68,6 @@ public class GameBridgeService {
         queueProcessor.rememberPlanningState(memoryId, state);
         workingMemoryService.observeState(gameName, memoryId, state);
 
-        // 把用户当前指令写入工作记忆，供 gamer agent 在决策时参考。
-        workingMemoryService.recordUserMessage(gameName, memoryId, userMessage);
-
         // 上一轮队列中断原因会随最新状态一并注入，要求 agent 放弃旧计划重新决策。
         String notice = queueProcessor.consumeNotice(memoryId);
         String lastActionResult = queueProcessor.peekLastActionResult(memoryId);
@@ -167,17 +164,6 @@ public class GameBridgeService {
      * @param sessionId 用户侧会话 id
      * @return 最近一次 enqueue_operations.status；本轮未提交时返回 UNKNOWN
      */
-    /**
-     * 查询最近一次 enqueue_operations 中模型生成的用户可见消息。
-     *
-     * @param gameName  游戏名
-     * @param sessionId 用户侧会话 id
-     * @return 用户可见消息；本轮未生成时返回空字符串
-     */
-    public String lastUserMessage(String gameName, String sessionId) {
-        return queueProcessor.lastMessage(GameSessionKey.of(gameName, sessionId));
-    }
-
     public GameBridgeActionStatus lastActionStatus(String gameName, String sessionId) {
         return queueProcessor.lastStatus(GameSessionKey.of(gameName, sessionId));
     }
